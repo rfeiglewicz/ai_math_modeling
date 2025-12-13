@@ -1,0 +1,3 @@
+[submodule "ac_types"]
+	path = ac_types
+	url = git@github.com:rfeiglewicz/ai_math_modeling.git
