@@ -3,6 +3,9 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <cmath>     // std::abs, std::ilogb, std::scalbn, std::isnan, std::isinf
+#include <limits>    // std::numeric_limits
+#include <algorithm> // std::max
 
 // =========================================================
 // Types and Constants
@@ -210,6 +213,113 @@ inline uint32_t fp_recompose(const FPRaw& components, FPType type) {
     // Final Mask to ensure cleanliness
     uint32_t total_mask = (cfg.total_bits == 32) ? 0xFFFFFFFF : ((1u << cfg.total_bits) - 1);
     return payload & total_mask;
+}
+
+// =========================================================
+// Analysis and Conversion Utilities
+// =========================================================
+
+/**
+ * @brief Converts a raw integer representation of a floating point value
+ * (of a given FPType) into a standard C++ double.
+ * * This is useful for analyzing the numeric value of custom formats (like BF16)
+ * using standard double-precision arithmetic.
+ * * @param raw_bits The raw bit payload of the number.
+ * @param type     The floating point format configuration.
+ * @return double  The numerical value represented by the raw bits.
+ */
+inline double fp_to_double(uint32_t raw_bits, FPType type) {
+    // 1. Decompose the raw bits into components (Sign, Exponent, Mantissa)
+    FPRaw parts = fp_decompose(raw_bits, type);
+    const FPConfig cfg = get_fp_config(type);
+
+    // 2. Handle Special Cases based on status
+    if (parts.status.is_nan) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    if (parts.status.is_inf) {
+        return parts.sign ? -std::numeric_limits<double>::infinity() 
+                          : std::numeric_limits<double>::infinity();
+    }
+    if (parts.status.is_zero) {
+        // Handle signed zero
+        return parts.sign ? -0.0 : 0.0;
+    }
+
+    // 3. Reconstruct value for Normal and Denormal numbers
+    // Formula: (-1)^S * 2^E * (HiddenBit + MantissaFraction)
+    
+    // Calculate mantissa fraction: mantissa / 2^(mant_bits)
+    double mant_fraction = static_cast<double>(parts.mantissa) / (1UL << cfg.mant_bits);
+    
+    // Add hidden bit (1 for normal, 0 for denormal)
+    double significand = static_cast<double>(parts.hidden_bit) + mant_fraction;
+
+    // Apply exponent using scalbn (efficient multiplication by power of 2)
+    // parts.exponent is already unbiased by fp_decompose
+    double abs_value = std::scalbn(significand, parts.exponent);
+
+    // 4. Apply Sign
+    return parts.sign ? -abs_value : abs_value;
+}
+
+/**
+ * @brief Calculates the error in Units in the Last Place (ULP).
+ * * Measures the distance between the reference value and the test value
+ * relative to the precision of the target floating point format.
+ * Correctly handles both normal and denormal ranges of the target format.
+ * * @param ref  The golden reference value (high precision).
+ * @param val  The tested value (approximation).
+ * @param type The target floating point format (defines the ULP size).
+ * @return double The error expressed in ULPs.
+ */
+inline double calculate_ulp_error(double ref, double val, FPType type) {
+    // Handle edge cases for NaN / Inf
+    if (std::isnan(ref) || std::isnan(val)) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    if (std::isinf(ref)) {
+        // If ref is Inf, error is 0 if val is also Inf with same sign, else Inf
+        if (std::isinf(val) && (std::signbit(ref) == std::signbit(val))) {
+            return 0.0;
+        }
+        return std::numeric_limits<double>::infinity();
+    }
+
+    const FPConfig cfg = get_fp_config(type);
+    
+    // 1. Calculate absolute difference
+    double diff = std::abs(ref - val);
+    
+    // Exact match -> 0 error
+    if (diff == 0.0) return 0.0;
+
+    // 2. Determine the unit of precision (1 ULP) near 'ref'
+    // The density of floating point numbers changes with the exponent.
+    // However, it cannot go below the density of the denormal range.
+    
+    // Minimum exponent for normal numbers in target format: 1 - Bias
+    int min_exp_normal = 1 - cfg.bias; 
+
+    // Extract exponent from reference (log2 of value)
+    int exp_ref;
+    if (ref == 0.0) {
+        // Zero is effectively in the denormal range for spacing purposes
+        exp_ref = min_exp_normal; 
+    } else {
+        exp_ref = std::ilogb(std::abs(ref));
+    }
+
+    // "Clamp" the exponent: if ref is smaller than smallest normal, 
+    // we use the fixed spacing of denormals.
+    int effective_exp = std::max(exp_ref, min_exp_normal);
+
+    // 3. Calculate magnitude of 1 ULP
+    // 1 ULP = 2^(effective_exp - mant_bits)
+    double one_ulp = std::scalbn(1.0, effective_exp - static_cast<int>(cfg.mant_bits));
+
+    // 4. Return error ratio
+    return diff / one_ulp;
 }
 
 #endif // FP_UTILS_HPP
