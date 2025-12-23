@@ -1,6 +1,6 @@
 # Compiler settings
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -I./src/utils
+CXXFLAGS = -std=c++17 -Wall -Wextra -I./src/utils -I./src/approximations
 
 # Directories
 SRC_DIR = src

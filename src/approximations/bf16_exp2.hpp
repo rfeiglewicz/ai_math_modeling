@@ -2,24 +2,23 @@
 #define BF16_EXP2_HPP
 
 #include "../utils/fp_utils.hpp"
+#include "bf16_exp2_core.hpp"
 #include <cstdint>
 
 /**
  * @brief Custom approximation of exp2(x) for BF16.
  * 
  * Logic:
- * 1. Special Cases (Priority):
+ * 1. Special Cases:
  *    - NaN -> NaN
- *    - +Inf -> +Inf
  *    - -Inf -> 0
  *    - +/-0 -> 1
- * 2. Negative Inputs (x < 0):
- *    - Exp < -9: Return 0.25 (1/4)
- *    - Else:     Return 0.5 (1/2)
- * 3. Positive Inputs (x > 0):
- *    - Exp < -8: Return 1.0
- *    - Exp > 6:  Return +Inf
- *    - Else:     Return 2.0
+ * 2. Positive Inputs (x > 0):
+ *    - Always Return 1.0
+ * 3. Negative Inputs (x < 0):
+ *    - Exp < -9: Return 1.0
+ *    - Exp > 7:  Return +0.0
+ *    - Exp [-9, 7]: Placeholder for approximation
  * 
  * @param raw_input Raw 16-bit BF16 payload
  * @return Raw 16-bit BF16 result
@@ -35,14 +34,13 @@ inline uint16_t bf16_exp2_approx(uint16_t raw_input) {
     // --- LOGIC START ---
 
     if (input_parts.status.is_nan) {
-        // NaN -> NaN (propagate payload if desired, here just standard QNaN)
+        // NaN -> NaN
         result_parts.status.is_nan = true;
         result_parts.mantissa = input_parts.mantissa;
-        // Sign of NaN usually doesn't matter, but we can preserve it
         result_parts.sign = input_parts.sign; 
     }
     else if (input_parts.status.is_zero) {
-        // 2^0 = 1 (regardless of sign of zero)
+        // 2^0 = 1
         result_parts.exponent = 0;
         result_parts.mantissa = 0;
         result_parts.hidden_bit = 1;
@@ -52,49 +50,38 @@ inline uint16_t bf16_exp2_approx(uint16_t raw_input) {
             // 2^(-inf) = 0
             result_parts.status.is_zero = true;
         } else {
-            // 2^(+inf) = +inf
-            result_parts.status.is_inf = true;
+            // 2^(+inf) -> 1.0 (per requirement "positive values always return 1")
+            result_parts.exponent = 0;
+            result_parts.mantissa = 0;
+            result_parts.hidden_bit = 1;
         }
     }
     else {
         // --- HANDLE NORMAL/DENORMAL NUMBERS ---
-        if (input_parts.sign) {
+        if (!input_parts.sign) {
+            // Case: Positive inputs (x > 0)
+            // Requirement: Always return 1.0
+            result_parts.exponent = 0;
+            result_parts.mantissa = 0;
+            result_parts.hidden_bit = 1;
+        } 
+        else {
             // Case: Negative inputs (x < 0)
             int32_t x_exp = input_parts.exponent;
 
             if (x_exp < -9) {
-                // Very small negative numbers -> Return 0.25 (1/4)
-                // 0.25 is Exp=-2 (biased 125), Mant=0
-                result_parts.exponent = -2;
-                result_parts.mantissa = 0;
-                result_parts.hidden_bit = 1;
-            } else {
-                // Larger negative numbers -> Return 0.5 (1/2)
-                // 0.5 is Exp=-1 (biased 126), Mant=0
-                result_parts.exponent = -1; 
-                result_parts.mantissa = 0;
-                result_parts.hidden_bit = 1;
-            }
-        } 
-        else {
-            // Case: Positive inputs (x > 0)
-            int32_t x_exp = input_parts.exponent;
-
-            if (x_exp < -8) {
-                // Small positive numbers -> Return 1.0
+                // Exponent < -9 -> Return 1.0
                 result_parts.exponent = 0;
                 result_parts.mantissa = 0;
                 result_parts.hidden_bit = 1;
             } 
-            else if (x_exp > 6) {
-                // Large positive numbers -> Return +Inf
-                result_parts.status.is_inf = true;
+            else if (x_exp > 7) {
+                // Exponent > 7 -> Return +0.0
+                result_parts.status.is_zero = true;
             } 
             else {
-                // Range [-8, 6] -> Return 2.0
-                result_parts.exponent = 1;
-                result_parts.mantissa = 0;
-                result_parts.hidden_bit = 1;
+                // Range [-9, 7] -> Use Core Approximation
+                result_parts = bf16_exp2_core_approx(input_parts);
             }
         }
     }
