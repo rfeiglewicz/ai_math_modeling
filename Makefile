@@ -1,6 +1,8 @@
 # Compiler settings
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -I./src/utils -I./src/approximations
+# Zakładam, że ac_datatypes jest w libs/ac_types. Dostosuj tę ścieżkę w razie potrzeby.
+AC_TYPES_DIR = ac_types
+CXXFLAGS = -std=c++17 -Wall -Wextra -I./src/utils -I./src/approximations -I$(AC_TYPES_DIR)/include
 
 # Directories
 SRC_DIR = src
@@ -22,55 +24,45 @@ TEST_SRC_ULP_ANALYSIS = $(TEST_DIR)/ulp_error_analysis.cpp
 TEST_SRC_LINEAR_APPROX = $(TEST_DIR)/test_bf16_linear_approx.cpp
 
 # Default rule: build all
+.PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx clean
+
 all: $(TARGET_MAIN) $(TARGET_EXHAUSTIVE) $(TARGET_GEN_APPROX) $(TARGET_ULP_ANALYSIS) $(TARGET_LINEAR_APPROX)
 
-# Rule to link the main test executable
-$(TARGET_MAIN): $(TEST_SRC_MAIN)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+# Create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-# Rule to link the exhaustive test executable
-$(TARGET_EXHAUSTIVE): $(TEST_SRC_EXHAUSTIVE)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+# Build rules
+$(TARGET_MAIN): $(TEST_SRC_MAIN) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
 
-# Rule to link the approximation generator
-$(TARGET_GEN_APPROX): $(TEST_SRC_GEN_APPROX)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(TARGET_EXHAUSTIVE): $(TEST_SRC_EXHAUSTIVE) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
 
-# Rule to link the ULP analysis test
-$(TARGET_ULP_ANALYSIS): $(TEST_SRC_ULP_ANALYSIS)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(TARGET_GEN_APPROX): $(TEST_SRC_GEN_APPROX) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
 
-# Rule to link the linear approximation test
-$(TARGET_LINEAR_APPROX): $(TEST_SRC_LINEAR_APPROX)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(TARGET_ULP_ANALYSIS): $(TEST_SRC_ULP_ANALYSIS) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
 
-# Run standard tests
+$(TARGET_LINEAR_APPROX): $(TEST_SRC_LINEAR_APPROX) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+# Run rules
 run: $(TARGET_MAIN)
 	./$(TARGET_MAIN)
 
-# Run exhaustive tests
 run_exhaustive: $(TARGET_EXHAUSTIVE)
 	./$(TARGET_EXHAUSTIVE)
 
-# Run approximation generator
 gen_approx: $(TARGET_GEN_APPROX)
 	./$(TARGET_GEN_APPROX)
 
-# Run ULP error analysis
 ulp_analysis: $(TARGET_ULP_ANALYSIS)
 	./$(TARGET_ULP_ANALYSIS)
 
-# Run linear approximation test
 run_linear_approx: $(TARGET_LINEAR_APPROX)
 	./$(TARGET_LINEAR_APPROX)
 
-# Clean build files
 clean:
 	rm -rf $(BUILD_DIR)
-
-.PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx clean
