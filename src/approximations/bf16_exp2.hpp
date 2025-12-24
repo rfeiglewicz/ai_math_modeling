@@ -80,7 +80,7 @@ inline uint16_t bf16_exp2_approx(uint16_t raw_input) {
                 result_parts.status.is_zero = true;
             } 
             else {
-                // Range [-9, 7] -> Use Core Approximation
+                // Range exponent -> [-9, 7] -> Use Core Approximation
                 result_parts = bf16_exp2_core_approx(input_parts);
             }
         }
