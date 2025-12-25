@@ -88,28 +88,34 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
     // Dodanie b: res = b + (-ax)
     calc_t res = ax_s + (calc_t)b_fixed;
     
-    // Szukanie pozycji MSB dla normalizacji
+    // Rzutowanie na ac_int pozwala na traktowanie liczby jako surowego ciągu bitów
+    ac_int<bf16_cfg::CALC_W, false> res_raw = res.slc<bf16_cfg::CALC_W>(0);
+
+    // 1. Priority Encoder (szukanie MSB)
+    // To jest standardowy wzorzec HLS, który syntezuje się do szybkiej logiki kombinacyjnej
     int msb_idx = -1;
     for (int i = bf16_cfg::CALC_W - 1; i >= 0; --i) {
-        if (res[i]) {
+        if (res_raw[i]) {
             msb_idx = i;
             break;
         }
     }
 
     PolyResult result;
-    // Wykładnik względem formatu 1.41 (jeśli MSB na pozycji bitu CALC_F, wykładnik = 0)
+    // Wykładnik względem formatu 1.41
     result.exponent = msb_idx - bf16_cfg::POLY_OUT_F;
 
-    // Wycięcie 42 bitów (MSB + 41 ułamkowych) dla zapewnienia precyzji RNE
-    ac_int<bf16_cfg::POLY_OUT_W, false> raw_bits = 0;
-    for (int i = 0; i < bf16_cfg::POLY_OUT_W; ++i) {
-        int bit_idx = msb_idx - i;
-        if (bit_idx >= 0 && res[bit_idx]) {
-            raw_bits[bf16_cfg::POLY_OUT_W - 1 - i] = 1;
-        }
-    }
-    result.mantissa.set_slc(0, raw_bits);
+    // 2. Normalizacja (Barrel Shifter + Slice)
+    // Zamiast pętli kopiującej, używamy przesunięcia bitowego, aby wyrównać MSB do lewej strony
+    // Obliczamy o ile trzeba przesunąć w lewo, aby MSB trafił na pozycję (CALC_W - 1)
+    int shift = (bf16_cfg::CALC_W - 1) - msb_idx;
+    
+    // Przesunięcie (Barrel Shifter)
+    ac_int<bf16_cfg::CALC_W, false> normalized = res_raw << shift;
+
+    // Wycięcie (Slice) - pobieramy POLY_OUT_W najstarszych bitów
+    // Indeks początkowy to: (Szerokość całkowita) - (Szerokość docelowa)
+    result.mantissa.set_slc(0, normalized.slc<bf16_cfg::POLY_OUT_W>(bf16_cfg::CALC_W - bf16_cfg::POLY_OUT_W));
     
     return result;
 }
