@@ -40,7 +40,7 @@ namespace bf16_cfg {
     constexpr int CALC_ADD_GUARD = 1; // Bit na przeniesienie (overflow) przy dodawaniu
     
     // CALC_I: Największa część całkowita + miejsce na znak i przeniesienie
-    constexpr int CALC_I = MAX_OP_I + CALC_SIGN_BIT + CALC_ADD_GUARD; 
+    constexpr int CALC_I = MAX_OP_I + CALC_ADD_GUARD; 
     
     // CALC_F: Największa precyzja ułamkowa (aby nie tracić bitów przed wynikiem)
     constexpr int CALC_F = MAX_OP_F;
