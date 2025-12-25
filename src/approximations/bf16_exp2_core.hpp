@@ -102,6 +102,7 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts) {
     
     mant_t mant_val;
     int32_t temp_exponent = input_parts.exponent;
+    int32_t exponent_bias = 0;
 
     // 2. Konwersja wejścia na fixed-point w zależności od zakresu wykładnika
     if (temp_exponent < 0) {
@@ -121,23 +122,85 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts) {
         // Przesunięcie w prawo o abs(temp_exponent) realizuje mnożenie przez 2^exp.
         // Przykład: dla exp = -1, mant_val 1.0 zmienia się w 0.1 (binarnie), czyli 0.5 dziesiętnie.
         mant_val >>= (-temp_exponent);
+        
+        exponent_bias = 0;
     }
     else {
-        // Dla wartości |x| >= 1 (wykładniki >= 0), na razie ustawiamy stałą wartość 1.0
-        mant_val = 1.0;
+        // Deklaracja typu stałoprzecinkowego 8.7 (8 bitów całkowitych, 7 ułamkowych)
+        typedef ac_fixed<15, 8, false> fix_8_7_t;
+        fix_8_7_t val = 0;
+
+        // Wprowadzenie mantysy (7 bitów) na pozycje ułamkowe
+        val.set_slc(0, (ac_int<7, false>)input_parts.mantissa);
+        // Ustawienie hidden bitu (bit o wadze 2^0, indeks 7)
+        val[7] = 1;
+
+        // Przesunięcie w lewo o wartość eksponenty (uzyskanie rzeczywistej wartości |x|)
+        val <<= temp_exponent;
+
+        // Wyodrębnienie części całkowitej (będzie dodana do eksponenty wyniku)
+        // Użycie slc zamiast to_int
+        ac_int<8, false> int_part_bits = val.slc<8>(7);
+        int integer_part = int_part_bits.to_int();
+
+        // Wyodrębnienie części ułamkowej i przypisanie do mant_val
+        // mant_val (format 1.16) oczekuje ułamka na bitach 15-0.
+        // Bity ułamkowe z val (indeksy 6-0) trafiają na starsze bity ułamkowe mant_val (15-9).
+        mant_val = 0;
+        mant_val.set_slc(9, val.slc<7>(0));
+
+        // Zapisanie części całkowitej w exponent_bias (z uwzględnieniem znaku)
+        exponent_bias = input_parts.sign ? -integer_part : integer_part;
     }
 
     // Wywołanie funkcji obliczającej wielomian/aproksymację
     PolyResult poly_res = bf16_exp2_poly(mant_val, input_parts.sign);
 
     result.sign = 0;
-    result.exponent = poly_res.exponent;
+    result.exponent = poly_res.exponent + exponent_bias;
     
     // Konwersja z formatu 1.7 (ac_fixed<8,1>) na FPRaw
     // FPRaw oczekuje samej części ułamkowej w polu mantissa (7 bitów)
     result.mantissa = poly_res.mantissa.slc<7>(0);
     // Bit całkowity (hidden bit)
     result.hidden_bit = poly_res.mantissa[7];
+    
+    // Obsługa denormów
+    // BF16: bias 127. Min normal exp = -126.
+    if (result.exponent < -126) {
+        int shift = -126 - result.exponent;
+        uint16_t full_mant = (result.hidden_bit << 7) | result.mantissa;
+        uint16_t result_m = 0;
+
+        if (shift > 8) {
+            result_m = 0;
+        } else {
+            result_m = full_mant >> shift;
+            
+            // Rounding (RNE)
+            uint16_t remainder = full_mant & ((1 << shift) - 1);
+            if (shift > 0) {
+                bool guard = (remainder >> (shift - 1)) & 1;
+                bool sticky = (remainder & ((1 << (shift - 1)) - 1)) != 0;
+                bool lsb = result_m & 1;
+                
+                if (guard && (sticky || lsb)) {
+                    result_m++;
+                }
+            }
+        }
+        
+        if (result_m > 127) {
+            // Rounding caused overflow back to normal
+            result.mantissa = 0;
+            result.hidden_bit = 1;
+            result.exponent = -126;
+        } else {
+            result.mantissa = result_m;
+            result.hidden_bit = 0;
+            result.exponent = -127; // Encodes to 0 in biased representation
+        }
+    }
     
     return result;
 }
