@@ -151,66 +151,67 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts) {
     int32_t final_exponent = poly_res.exponent + exponent_bias;
     ac_int<bf16_cfg::POLY_OUT_W, false> full_mant = poly_res.mantissa.slc<bf16_cfg::POLY_OUT_W>(0);
     
-    int shift = 0;
-    bool is_denormal_range = (final_exponent < -126);
+    // 1. Wyznaczenie parametrów wyrównania (Alignment Logic)
+    // Obliczamy przesunięcie w prawo potrzebne do wyrównania LSB do stałej pozycji.
+    // W BF16 (1.7) LSB znajduje się 7 pozycji za kropką. Nasze 1.41 ma 41 pozycji.
+    // Bazowy shift dla liczb normalnych to 41 - 7 = 34.
+    bool is_sub = (final_exponent < -126);
+    // shift_val to liczba bitów "odrzucanych" (prawa strona od punktu zaokrąglania)
+    int shift_val = 34 + (is_sub ? (-126 - final_exponent) : 0);
 
-    // Dynamiczne obliczanie shift na podstawie parametrów szerokości
-    if (is_denormal_range) {
-        shift = (bf16_cfg::POLY_OUT_W - 1) - (final_exponent + 133);
-    } else {
-        // Normalna liczba: przesunięcie z formatu 1.40 do formatu 1.7 (BF16)
-        shift = (bf16_cfg::POLY_OUT_W - 1) - 7; 
+    // 2. Ekstrakcja bitów do zaokrąglenia (Zabezpieczona logika RNE)
+    ac_int<bf16_cfg::POLY_OUT_W, false> m_raw = full_mant;
+    
+    // LSB to bit na pozycji shift_val. Jeśli shift >= szerokości, bit to 0.
+    bool lsb_bit = (shift_val < 42) ? (bool)m_raw[shift_val] : false;
+    
+    // Guard bit to bit bezpośrednio na prawo od LSB (shift_val - 1)
+    bool guard_bit = (shift_val > 0 && shift_val <= 42) ? (bool)m_raw[shift_val - 1] : false;
+    
+    // Sticky bit to logiczne OR wszystkich bitów młodszych od Guard
+    bool sticky_bit = false;
+    if (shift_val > 1) {
+        if (shift_val > 42) {
+            sticky_bit = (m_raw != 0); // Wszystko wypadło na prawo
+        } else {
+            // Bezpieczne tworzenie maski dla bitów [shift_val-2 : 0]
+            ac_int<42, false> mask = (ac_int<42, false>(1) << (shift_val - 1)) - 1;
+            sticky_bit = (m_raw & mask) != 0;
+        }
     }
 
-    uint32_t result_m = 0;
-    bool guard = false;
-    bool sticky = false;
-    bool lsb = false;
+    // Reguła zaokrąglania Round to Nearest Even
+    bool round_up = guard_bit && (lsb_bit || sticky_bit);
 
-    if (shift >= (bf16_cfg::POLY_OUT_W + 1)) {
-        sticky = (full_mant != 0);
-    } else if (shift > 0) {
-        result_m = (full_mant >> shift).to_int();
-        ac_int<bf16_cfg::POLY_OUT_W, false> mask = (ac_int<bf16_cfg::POLY_OUT_W, false>(1) << shift) - 1;
-        ac_int<bf16_cfg::POLY_OUT_W, false> remainder = full_mant & mask;
-        guard = (remainder >> (shift - 1)) & 1;
-        sticky = (remainder & ((ac_int<bf16_cfg::POLY_OUT_W, false>(1) << (shift - 1)) - 1)) != 0;
-        lsb = result_m & 1;
-    } else {
-        result_m = full_mant.to_int();
+    // 3. Przesunięcie i zaokrąglenie (9 bitów: carry, hidden, mantissa)
+    ac_int<9, false> result_m_ext = 0;
+    if (shift_val < 42) {
+        result_m_ext = (ac_int<9, false>)(m_raw >> shift_val);
+    }
+    if (round_up) result_m_ext++;
+
+    // 4. Normalizacja i korekta wykładnika (bez zmian)
+    int32_t adjusted_exp = is_sub ? -126 : final_exponent;
+    if (result_m_ext[8]) {
+        adjusted_exp++;
+        result_m_ext >>= 1;
     }
 
-    // Zaokrąglanie RNE
-    if (guard && (sticky || lsb)) {
-        result_m++;
-    }
-
+    // 5. Finalne formowanie struktury (bez zmian)
     result.sign = 0;
-    if (is_denormal_range) {
-        if (result_m > 127) { // Overflow z denormal do normal
-            result.mantissa = 0;
-            result.hidden_bit = 1;
-            result.exponent = -126;
-            result.status.is_denormal = false;
-        } else if (result_m == 0) {
-            result.status.is_zero = true;
-            result.exponent = 0;
-        } else {
-            result.mantissa = result_m;
-            result.hidden_bit = 0;
-            result.exponent = -127; 
-            result.status.is_denormal = true;
-        }
+    if (result_m_ext == 0) {
+        result.status.is_zero = true;
+        result.exponent = 0;
+    } else if (is_sub && !result_m_ext[7]) {
+        result.mantissa = result_m_ext.slc<7>(0);
+        result.hidden_bit = 0;
+        result.exponent = -127;
+        result.status.is_denormal = true;
     } else {
-        if (result_m > 255) { // Overflow mantysy (carry out)
-            result.mantissa = 0;
-            result.hidden_bit = 1;
-            result.exponent = final_exponent + 1;
-        } else {
-            result.mantissa = result_m & 0x7F;
-            result.hidden_bit = 1;
-            result.exponent = final_exponent;
-        }
+        result.mantissa = result_m_ext.slc<7>(0);
+        result.hidden_bit = 1;
+        result.exponent = adjusted_exp;
+        result.status.is_denormal = false;
     }
     
     return result;
