@@ -161,27 +161,27 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts) {
     int32_t exponent_bias = 0;
 
     // Convert input to 1.16 fixed-point format
-    if (temp_exponent < 0) {
-        mant_val = 0;
-        // Align mantissa relative to IN_F
-        mant_val.set_slc(bf16_cfg::IN_F - bf16_cfg::TARGET_MANT_W, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
-        mant_val[bf16_cfg::IN_F] = 1; // Hidden bit
-        mant_val >>= (-temp_exponent);
-        exponent_bias = 0;
-    } else {
-        // Handle positive input exponents by splitting into integer and fractional parts
-        typedef ac_fixed<bf16_cfg::IN_CONV_W, bf16_cfg::IN_CONV_INT_W, false> in_fix_t;
-        in_fix_t val = 0;
-        val.set_slc(0, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
-        val[bf16_cfg::TARGET_MANT_W] = 1;
+    // Unified 8.16 format (8 integer bits, 16 fractional bits)
+    typedef ac_fixed<bf16_cfg::IN_CONV_INT_W + bf16_cfg::IN_F, bf16_cfg::IN_CONV_INT_W, false> unified_t;
+    unified_t val = 0;
+
+    // Initialize with mantissa (1.m) aligned to the fractional part
+    val.set_slc(bf16_cfg::IN_F - bf16_cfg::TARGET_MANT_W, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
+    val[bf16_cfg::IN_F] = 1; // Hidden bit
+
+    // Shift based on exponent
+    if (temp_exponent >= 0) {
         val <<= temp_exponent;
-        
-        mant_val = 0;
-        mant_val.set_slc(bf16_cfg::IN_F - bf16_cfg::IN_CONV_FRAC_W, val.slc<bf16_cfg::IN_CONV_FRAC_W>(0));
-        
-        // Integer part of the input determines the final exponent shift
-        exponent_bias = -(int)val.slc<bf16_cfg::IN_CONV_INT_W>(bf16_cfg::IN_CONV_FRAC_W).to_int();
+    } else {
+        val >>= (-temp_exponent);
     }
+
+    // Extract fractional part for polynomial approximation
+    mant_val = 0;
+    mant_val.set_slc(0, val.slc<bf16_cfg::IN_F>(0));
+
+    // Integer part determines the final exponent shift
+    exponent_bias = -(int)val.to_int();
 
     // Call polynomial approximation
     PolyResult poly_res = bf16_exp2_poly(mant_val);
