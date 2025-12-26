@@ -51,6 +51,27 @@ namespace bf16_cfg {
     constexpr int POLY_OUT_I = 1;
     constexpr int POLY_OUT_F = CALC_F;
     constexpr int POLY_OUT_W = POLY_OUT_I + POLY_OUT_F;
+
+
+    // --- Parametry formatu docelowego (BF16) ---
+    constexpr int TARGET_MANT_W = 7;
+    constexpr int TARGET_EXP_BIAS = 127;
+    constexpr int TARGET_MIN_EXP = 1 - TARGET_EXP_BIAS; // -126 dla BF16
+
+    // --- Logika wyrównywania i zaokrąglania ---
+    // Bazowe przesunięcie: różnica między precyzją wielomianu a mantysą docelową
+    // 1.41 -> 1.7 wymaga przesunięcia o 34 bity (41 - 7), aby LSB się pokryły
+    constexpr int BASE_SHIFT = POLY_OUT_F - TARGET_MANT_W; 
+    
+    // Szerokość rozszerzonej mantysy: bit przeniesienia + hidden bit + mantysa
+    constexpr int EXT_MANT_W = TARGET_MANT_W + 2;    // 7 + 1 + 1 = 9
+    constexpr int CARRY_BIT_IDX = EXT_MANT_W - 1;    // Indeks bitu overflow (8)
+    constexpr int HIDDEN_BIT_IDX = TARGET_MANT_W;    // Indeks bitu ukrytego (7)
+
+    // --- Parametry konwersji wejściowej ---
+    constexpr int IN_CONV_INT_W = 8;                 // Bity na część całkowitą x
+    constexpr int IN_CONV_FRAC_W = TARGET_MANT_W;    // Bity na część ułamkową x
+    constexpr int IN_CONV_W = IN_CONV_INT_W + IN_CONV_FRAC_W;
 }
 
 // Typ stałoprzecinkowy wejściowy
@@ -129,86 +150,82 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts) {
     // Konwersja wejścia na format 1.16
     if (temp_exponent < 0) {
         mant_val = 0;
-        mant_val.set_slc(bf16_cfg::IN_F - 7, (ac_int<7, false>)input_parts.mantissa);
+        // Wstawienie mantysy na odpowiednie pozycje względem IN_F
+        mant_val.set_slc(bf16_cfg::IN_F - bf16_cfg::TARGET_MANT_W, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
         mant_val[bf16_cfg::IN_F] = 1; // Hidden bit
         mant_val >>= (-temp_exponent);
         exponent_bias = 0;
     } else {
-        typedef ac_fixed<15, 8, false> fix_8_7_t;
-        fix_8_7_t val = 0;
-        val.set_slc(0, (ac_int<7, false>)input_parts.mantissa);
-        val[7] = 1;
+        // Pomocniczy typ stałoprzecinkowy do rozbicia wejścia na część całkowitą i ułamkową
+        typedef ac_fixed<bf16_cfg::IN_CONV_W, bf16_cfg::IN_CONV_INT_W, false> in_fix_t;
+        in_fix_t val = 0;
+        val.set_slc(0, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
+        val[bf16_cfg::TARGET_MANT_W] = 1;
         val <<= temp_exponent;
+        
         mant_val = 0;
-        mant_val.set_slc(bf16_cfg::IN_F - 7, val.slc<7>(0));
-        // Wykładnik całkowity liczby wejściowej, zawsze będzie ujemny bo x są ujemne ( lub -0)
-        exponent_bias = -(int)val.slc<8>(7).to_int();
+        mant_val.set_slc(bf16_cfg::IN_F - bf16_cfg::IN_CONV_FRAC_W, val.slc<bf16_cfg::IN_CONV_FRAC_W>(0));
+        
+        // Wykładnik całkowity liczby wejściowej determinuje przesunięcie końcowe
+        exponent_bias = -(int)val.slc<bf16_cfg::IN_CONV_INT_W>(bf16_cfg::IN_CONV_FRAC_W).to_int();
     }
 
-    // Wywołanie wielomianu (bez znaku - logika przesunięta do środka poly)
+    // Wywołanie aproksymacji wielomianowej
     PolyResult poly_res = bf16_exp2_poly(mant_val);
 
     int32_t final_exponent = poly_res.exponent + exponent_bias;
     ac_int<bf16_cfg::POLY_OUT_W, false> full_mant = poly_res.mantissa.slc<bf16_cfg::POLY_OUT_W>(0);
     
     // 1. Wyznaczenie parametrów wyrównania (Alignment Logic)
-    // Obliczamy przesunięcie w prawo potrzebne do wyrównania LSB do stałej pozycji.
-    // W BF16 (1.7) LSB znajduje się 7 pozycji za kropką. Nasze 1.41 ma 41 pozycji.
-    // Bazowy shift dla liczb normalnych to 41 - 7 = 34.
-    bool is_sub = (final_exponent < -126);
-    // shift_val to liczba bitów "odrzucanych" (prawa strona od punktu zaokrąglania)
-    int shift_val = 34 + (is_sub ? (-126 - final_exponent) : 0);
+    bool is_sub = (final_exponent < bf16_cfg::TARGET_MIN_EXP);
+    
+    // shift_val to liczba bitów "odrzucanych" w prawo przy zaokrąglaniu
+    int shift_val = bf16_cfg::BASE_SHIFT + (is_sub ? (bf16_cfg::TARGET_MIN_EXP - final_exponent) : 0);
 
     // 2. Ekstrakcja bitów do zaokrąglenia (Zabezpieczona logika RNE)
     ac_int<bf16_cfg::POLY_OUT_W, false> m_raw = full_mant;
     
-    // LSB to bit na pozycji shift_val. Jeśli shift >= szerokości, bit to 0.
-    bool lsb_bit = (shift_val < 42) ? (bool)m_raw[shift_val] : false;
+    bool lsb_bit = (shift_val < bf16_cfg::POLY_OUT_W) ? (bool)m_raw[shift_val] : false;
+    bool guard_bit = (shift_val > 0 && shift_val <= bf16_cfg::POLY_OUT_W) ? (bool)m_raw[shift_val - 1] : false;
     
-    // Guard bit to bit bezpośrednio na prawo od LSB (shift_val - 1)
-    bool guard_bit = (shift_val > 0 && shift_val <= 42) ? (bool)m_raw[shift_val - 1] : false;
-    
-    // Sticky bit to logiczne OR wszystkich bitów młodszych od Guard
     bool sticky_bit = false;
     if (shift_val > 1) {
-        if (shift_val > 42) {
-            sticky_bit = (m_raw != 0); // Wszystko wypadło na prawo
+        if (shift_val > bf16_cfg::POLY_OUT_W) {
+            sticky_bit = (m_raw != 0); 
         } else {
-            // Bezpieczne tworzenie maski dla bitów [shift_val-2 : 0]
-            ac_int<42, false> mask = (ac_int<42, false>(1) << (shift_val - 1)) - 1;
+            ac_int<bf16_cfg::POLY_OUT_W, false> mask = (ac_int<bf16_cfg::POLY_OUT_W, false>(1) << (shift_val - 1)) - 1;
             sticky_bit = (m_raw & mask) != 0;
         }
     }
 
-    // Reguła zaokrąglania Round to Nearest Even
     bool round_up = guard_bit && (lsb_bit || sticky_bit);
 
-    // 3. Przesunięcie i zaokrąglenie (9 bitów: carry, hidden, mantissa)
-    ac_int<9, false> result_m_ext = 0;
-    if (shift_val < 42) {
-        result_m_ext = (ac_int<9, false>)(m_raw >> shift_val);
+    // 3. Przesunięcie i zaokrąglenie
+    ac_int<bf16_cfg::EXT_MANT_W, false> result_m_ext = 0;
+    if (shift_val < bf16_cfg::POLY_OUT_W) {
+        result_m_ext = (ac_int<bf16_cfg::EXT_MANT_W, false>)(m_raw >> shift_val);
     }
     if (round_up) result_m_ext++;
 
-    // 4. Normalizacja i korekta wykładnika (bez zmian)
-    int32_t adjusted_exp = is_sub ? -126 : final_exponent;
-    if (result_m_ext[8]) {
+    // 4. Normalizacja i korekta wykładnika (obsługa carry po zaokrągleniu)
+    int32_t adjusted_exp = is_sub ? bf16_cfg::TARGET_MIN_EXP : final_exponent;
+    if (result_m_ext[bf16_cfg::CARRY_BIT_IDX]) {
         adjusted_exp++;
         result_m_ext >>= 1;
     }
 
-    // 5. Finalne formowanie struktury (bez zmian)
+    // 5. Finalne formowanie struktury
     result.sign = 0;
     if (result_m_ext == 0) {
         result.status.is_zero = true;
         result.exponent = 0;
-    } else if (is_sub && !result_m_ext[7]) {
-        result.mantissa = result_m_ext.slc<7>(0);
+    } else if (is_sub && !result_m_ext[bf16_cfg::HIDDEN_BIT_IDX]) {
+        result.mantissa = result_m_ext.slc<bf16_cfg::TARGET_MANT_W>(0);
         result.hidden_bit = 0;
-        result.exponent = -127;
+        result.exponent = bf16_cfg::TARGET_MIN_EXP - 1; // -127 dla BF16
         result.status.is_denormal = true;
     } else {
-        result.mantissa = result_m_ext.slc<7>(0);
+        result.mantissa = result_m_ext.slc<bf16_cfg::TARGET_MANT_W>(0);
         result.hidden_bit = 1;
         result.exponent = adjusted_exp;
         result.status.is_denormal = false;
