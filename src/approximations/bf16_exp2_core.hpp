@@ -44,8 +44,8 @@ namespace bf16_cfg {
     constexpr int IN_W = IN_I + IN_F;
 
     /** @brief Look-Up Table (LUT) parameters for piecewise segments. */
-    constexpr int LUT_ADDR_W = 6;               // Number of address bits (log2 of LUT size)
-    constexpr int LUT_SIZE = 1 << LUT_ADDR_W;   // LUT size (64 entries)
+    constexpr int LUT_ADDR_W = 7;               // Number of address bits (log2 of LUT size)
+    constexpr int LUT_SIZE = 1 << LUT_ADDR_W;   // LUT size (number of entries)
     constexpr int LUT_MAX_IDX = LUT_SIZE - 1;   // Maximum index for coefficient mapping
 
     /** @brief Coefficient format: unsigned 1.25. */
