@@ -7,24 +7,21 @@
 #include <sstream>
 #include "fp_utils.hpp"
 
-int main() {
-    const std::string input_filename = "modeling/golden_ref/output.txt";
-    const std::string output_filename = "modeling/golden_ref/output_with_ulp.txt";
-
+void analyze_file(const std::string& input_filename, const std::string& output_filename, bool is_base2) {
     std::ifstream infile(input_filename);
     if (!infile.is_open()) {
         std::cerr << "Error: Could not open input file " << input_filename << "\n";
-        std::cerr << "Make sure to run from the project root directory.\n";
-        return 1;
+        return;
     }
 
     std::ofstream outfile(output_filename);
     if (!outfile.is_open()) {
         std::cerr << "Error: Could not open output file " << output_filename << "\n";
-        return 1;
+        return;
     }
 
-    std::cout << "Analyzing ULP error for exp2 function...\n";
+    std::cout << "Analyzing ULP error for " << (is_base2 ? "exp2" : "expe") << " function...\n";
+    std::cout << "Input: " << input_filename << "\n";
 
     std::string line;
     int line_count = 0;
@@ -56,14 +53,19 @@ int main() {
         // Convert BF16 input to double (this is the 'x' value)
         double x_value = fp_to_double(input_raw, FPType::BF16);
 
-        // Convert BF16 output to double (this is the GPU's result for 2^x)
-        double gpu_result = fp_to_double(output_raw, FPType::BF16);
+        // Convert BF16 output to double (this is the approximation result)
+        double approx_result = fp_to_double(output_raw, FPType::BF16);
 
         // Calculate the ideal reference value using double precision
-        double reference = std::exp2(x_value);
+        double reference;
+        if (is_base2) {
+            reference = std::exp2(x_value);
+        } else {
+            reference = std::exp(x_value);
+        }
 
         // Calculate ULP error
-        double ulp_error = calculate_ulp_error(reference, gpu_result, FPType::BF16);
+        double ulp_error = calculate_ulp_error(reference, approx_result, FPType::BF16);
 
         // Write to output file: HEX_IN HEX_OUT ULP_ERROR
         outfile << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << input_raw 
@@ -94,7 +96,7 @@ int main() {
     outfile.close();
 
     // Print summary
-    std::cout << "\n=== ULP Error Analysis Summary ===\n";
+    std::cout << "=== ULP Error Analysis Summary (" << (is_base2 ? "exp2" : "expe") << ") ===\n";
     std::cout << "Total lines processed: " << line_count << "\n";
     std::cout << "Valid measurements: " << valid_count << "\n";
     std::cout << "Parse errors: " << error_count << "\n";
@@ -106,7 +108,16 @@ int main() {
         std::cout << std::dec << "Average ULP error: " << (total_ulp_error / valid_count) << "\n";
     }
 
-    std::cout << "\nResults written to: " << output_filename << "\n";
+    std::cout << "Results written to: " << output_filename << "\n";
+    std::cout << "----------------------------------------\n\n";
+}
+
+int main() {
+    // Analyze exp2 (Base 2)
+    analyze_file("modeling/golden_ref/bf16_exp2_approx_out.txt", "modeling/golden_ref/bf16_exp2_ulp.txt", true);
+
+    // Analyze expe (Base e)
+    analyze_file("modeling/golden_ref/bf16_expe_approx_out.txt", "modeling/golden_ref/bf16_expe_ulp.txt", false);
 
     return 0;
 }

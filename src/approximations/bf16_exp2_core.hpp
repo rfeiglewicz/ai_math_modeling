@@ -12,9 +12,35 @@
  * piecewise linear approximation and RNE rounding logic.
  */
 namespace bf16_cfg {
-    /** @brief Input format: unsigned 1.16 (1 integer bit, 16 fractional bits). */
+    /** @brief BF16 target format parameters. */
+    constexpr int TARGET_MANT_W = 7;
+    constexpr int TARGET_EXP_BIAS = 127;
+    constexpr int TARGET_MIN_EXP = 1 - TARGET_EXP_BIAS; // -126 for BF16
+
+    /** @brief Input Exponent Range for Approximation [-9, 7] */
+    constexpr int INPUT_MIN_EXP = -9;
+    constexpr int INPUT_MAX_EXP = 7;
+
+    /** @brief Mantissa Source Format (1.7) */
+    constexpr int MANT_SRC_I = 1;
+    constexpr int MANT_SRC_F = TARGET_MANT_W;
+    constexpr int MANT_SRC_W = MANT_SRC_I + MANT_SRC_F;
+
+    /** @brief Log2E Constant Format (1.25) */
+    constexpr int LOG2E_I = 1;
+    constexpr int LOG2E_F = 25;
+    constexpr int LOG2E_W = LOG2E_I + LOG2E_F;
+
+    /** @brief Multiplication Result Format (mant_src * log2e) -> 2.32 */
+    constexpr int MANT_MULT_I = MANT_SRC_I + LOG2E_I;
+    constexpr int MANT_MULT_F = MANT_SRC_F + LOG2E_F;
+    constexpr int MANT_MULT_W = MANT_MULT_I + MANT_MULT_F;
+
+    /** @brief Input format: unsigned 1.41 (1 integer bit, 41 fractional bits). 
+     * Derived from multiplication precision and max negative shift.
+     */
     constexpr int IN_I = 1;
-    constexpr int IN_F = 16;
+    constexpr int IN_F = MANT_MULT_F + (-INPUT_MIN_EXP); // 32 + 9 = 41
     constexpr int IN_W = IN_I + IN_F;
 
     /** @brief Look-Up Table (LUT) parameters for piecewise segments. */
@@ -55,12 +81,6 @@ namespace bf16_cfg {
     constexpr int POLY_OUT_F = CALC_F;
     constexpr int POLY_OUT_W = POLY_OUT_I + POLY_OUT_F;
 
-
-    /** @brief BF16 target format parameters. */
-    constexpr int TARGET_MANT_W = 7;
-    constexpr int TARGET_EXP_BIAS = 127;
-    constexpr int TARGET_MIN_EXP = 1 - TARGET_EXP_BIAS; // -126 for BF16
-
     /** * @brief Alignment and rounding logic parameters.
      * BASE_SHIFT is the difference between polynomial precision and target mantissa.
      */
@@ -72,7 +92,7 @@ namespace bf16_cfg {
     constexpr int HIDDEN_BIT_IDX = TARGET_MANT_W;    // Index of the hidden bit (7)
 
     /** @brief Input conversion parameters for decomposing x into integer and fractional parts. */
-    constexpr int IN_CONV_INT_W = 8;                 // Bits for integer part of x
+    constexpr int IN_CONV_INT_W = INPUT_MAX_EXP + MANT_MULT_I; // 7 + 2 = 9
     constexpr int IN_CONV_FRAC_W = TARGET_MANT_W;    // Bits for fractional part of x
     constexpr int IN_CONV_W = IN_CONV_INT_W + IN_CONV_FRAC_W;
 }
@@ -91,7 +111,7 @@ struct PolyResult {
  * * Formula: result = a * (-x) + b
  * Uses a Look-Up Table (LUT) for coefficients 'a' and 'b' based on the leading 
  * bits of the input fractional part.
- * * @param mant_val Input value in 1.16 fixed-point format.
+ * * @param mant_val Input value in 1.41 fixed-point format.
  * @return Normalized PolyResult containing mantissa and exponent.
  */
 inline PolyResult bf16_exp2_poly(mant_t mant_val) {
@@ -148,26 +168,40 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
 }
 
 /**
- * @brief Core hardware-accurate approximation of exp2(x).
+ * @brief Core hardware-accurate approximation of exp(x) (base e) or exp2(x) (base 2).
  * * Handles input decomposition, range reduction to [0, 1], polynomial evaluation,
  * and standard BF16 rounding (Round to Nearest Even).
  * * @param input_parts Decomposed BF16 input structure.
+ * @param base2 If true, calculates 2^x. If false, calculates e^x.
  * @return Decomposed BF16 result structure.
  */
-inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts) {
+inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) {
     FPRaw result = {};
     mant_t mant_val;
     int32_t temp_exponent = input_parts.exponent;
     int32_t exponent_bias = 0;
 
-    // Convert input to 1.16 fixed-point format
-    // Unified 8.16 format (8 integer bits, 16 fractional bits)
+    // Convert input to 1.41 fixed-point format
+    // Unified 9.41 format (9 integer bits, 41 fractional bits)
     typedef ac_fixed<bf16_cfg::IN_CONV_INT_W + bf16_cfg::IN_F, bf16_cfg::IN_CONV_INT_W, false> unified_t;
     unified_t val = 0;
 
-    // Initialize with mantissa (1.m) aligned to the fractional part
-    val.set_slc(bf16_cfg::IN_F - bf16_cfg::TARGET_MANT_W, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
-    val[bf16_cfg::IN_F] = 1; // Hidden bit
+    // 1. Prepare Mantissa (1.7 format)
+    ac_fixed<bf16_cfg::MANT_SRC_W, bf16_cfg::MANT_SRC_I, false> mant_src;
+    mant_src[bf16_cfg::MANT_SRC_W - 1] = 1; // Hidden bit
+    mant_src.set_slc(0, (ac_int<bf16_cfg::TARGET_MANT_W, false>)input_parts.mantissa);
+
+    // 2. Multiply by log2(e) (1.25 format)
+    // log2(e) ~= 1.442695
+    ac_fixed<bf16_cfg::LOG2E_W, bf16_cfg::LOG2E_I, false> log2e_const = 1.4426950408889634073599246810018921374266459541529859341354494069;
+    
+    // Result is 2.32 format (2 integer bits, 32 fractional bits)
+    ac_fixed<bf16_cfg::MANT_MULT_W, bf16_cfg::MANT_MULT_I, false> mant_mult = mant_src * log2e_const;
+
+    // 3. Move to Unified Format (9.41)
+    // We need 9 integer bits because the maximum negative exponent is -9,
+    // so the shift will be 9. The multiplication result has 2 integer bits.
+    val = base2 ? (unified_t)mant_src : (unified_t)mant_mult;
 
     // Shift based on exponent
     if (temp_exponent >= 0) {

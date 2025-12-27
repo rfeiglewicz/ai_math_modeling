@@ -23,7 +23,7 @@
  * @param raw_input Raw 16-bit BF16 payload
  * @return Raw 16-bit BF16 result
  */
-inline uint16_t bf16_exp2_approx(uint16_t raw_input) {
+inline uint16_t bf16_exp2_approx(uint16_t raw_input, bool base2 = true) {
     // 1. Decompose input
     FPRaw input_parts = fp_decompose(static_cast<uint32_t>(raw_input), FPType::BF16);
 
@@ -81,7 +81,7 @@ inline uint16_t bf16_exp2_approx(uint16_t raw_input) {
             } 
             else {
                 // Exponent range -> [-9, 7] -> Use Core Approximation
-                result_parts = bf16_exp2_core_approx(input_parts);
+                result_parts = bf16_exp2_core_approx(input_parts, base2);
             }
         }
     }
