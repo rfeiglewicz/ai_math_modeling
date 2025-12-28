@@ -179,7 +179,7 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
  */
 inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) {
     FPRaw result = {};
-    mant_t mant_val;
+    mant_t mant_val = 0;
     int32_t temp_exponent = input_parts.exponent;
     int32_t exponent_bias = 0;
 
