@@ -9,15 +9,15 @@
 // Define the fixed-point format parameters
 // These match the configuration in src/approximations/bf16_exp2_core.hpp
 constexpr int COEFF_I = 1;
-constexpr int COEFF_F = 25;
-constexpr int COEFF_W = COEFF_I + COEFF_F; // 26 bits
+constexpr int COEFF_F = 20;
+constexpr int COEFF_W = COEFF_I + COEFF_F; 
 
 // Log2E Constant Format 
 constexpr int LOG2E_I = 1;
 constexpr int LOG2E_F = 22;
 constexpr int LOG2E_W = LOG2E_I + LOG2E_F;
 
-// Packed width: 2 coefficients * 26 bits = 52 bits
+// Packed width: 2 coefficients of COEFF_W bits each
 constexpr int PACKED_W = 2 * COEFF_W;
 
 int main() {
