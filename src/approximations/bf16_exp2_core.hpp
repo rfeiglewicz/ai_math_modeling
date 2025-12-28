@@ -2,7 +2,7 @@
 #define BF16_EXP2_CORE_HPP
 
 #include "../utils/fp_utils.hpp"
-#include "../../modeling/coeff_gen/bf16_exp2_coeffs.hpp"
+#include "../../modeling/coeff_gen/bf16_exp2_packed_coeffs.hpp"
 #include "ac_fixed.h"
 
 /**
@@ -49,9 +49,9 @@ namespace bf16_cfg {
     constexpr int LUT_MAX_IDX = LUT_SIZE - 1;   // Maximum index for coefficient mapping
 
     /** @brief Coefficient format: unsigned 1.25. */
-    constexpr int COEFF_I = 1;
-    constexpr int COEFF_F = 25;
-    constexpr int COEFF_W = COEFF_I + COEFF_F;
+    constexpr int COEFF_I = bf16_exp2_packed::COEFF_I;
+    constexpr int COEFF_F = bf16_exp2_packed::COEFF_F;
+    constexpr int COEFF_W = bf16_exp2_packed::COEFF_W;
 
     /** @brief Multiplication parameters (a * x). Product width is the sum of operand widths. */
     constexpr int MULT_I = IN_I + COEFF_I; // 2 integer bits
@@ -119,14 +119,16 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
     uint8_t lut_index = mant_val.slc<bf16_cfg::LUT_ADDR_W>(bf16_cfg::IN_F - bf16_cfg::LUT_ADDR_W);
 
     // Fetch coefficients based on the inverted index for the 2^-x mapping
-    float a_float = bf16_exp2::coeffs_a[bf16_cfg::LUT_MAX_IDX - lut_index];
-    float b_float = bf16_exp2::coeffs_b[bf16_cfg::LUT_MAX_IDX - lut_index];
+    int idx = bf16_cfg::LUT_MAX_IDX - lut_index;
+    ac_int<bf16_exp2_packed::PACKED_W, false> packed = bf16_exp2_packed::coeffs[idx];
 
     typedef ac_fixed<bf16_cfg::COEFF_W, bf16_cfg::COEFF_I, false> coeff_t;
     typedef ac_fixed<bf16_cfg::CALC_W, bf16_cfg::CALC_I, true> calc_t;
 
-    coeff_t a_fixed = a_float;
-    coeff_t b_fixed = b_float;
+    coeff_t a_fixed;
+    a_fixed.set_slc(0, packed.slc<bf16_cfg::COEFF_W>(0));
+    coeff_t b_fixed;
+    b_fixed.set_slc(0, packed.slc<bf16_cfg::COEFF_W>(bf16_cfg::COEFF_W));
 
     // Perform multiplication: a * x
     ac_fixed<bf16_cfg::MULT_W, bf16_cfg::MULT_I, false> ax_u = a_fixed * mant_val;
