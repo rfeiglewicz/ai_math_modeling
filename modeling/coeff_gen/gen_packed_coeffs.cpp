@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <cmath>
 #include "bf16_exp2_coeffs.hpp"
 #include "ac_fixed.h"
 #include "ac_int.h"
@@ -10,6 +11,11 @@
 constexpr int COEFF_I = 1;
 constexpr int COEFF_F = 25;
 constexpr int COEFF_W = COEFF_I + COEFF_F; // 26 bits
+
+// Log2E Constant Format 
+constexpr int LOG2E_I = 1;
+constexpr int LOG2E_F = 22;
+constexpr int LOG2E_W = LOG2E_I + LOG2E_F;
 
 // Packed width: 2 coefficients * 26 bits = 52 bits
 constexpr int PACKED_W = 2 * COEFF_W;
@@ -26,7 +32,8 @@ int main() {
     // Header guard and includes
     out << "#ifndef BF16_EXP2_PACKED_COEFFS_HPP\n";
     out << "#define BF16_EXP2_PACKED_COEFFS_HPP\n\n";
-    out << "#include \"ac_int.h\"\n\n";
+    out << "#include \"ac_int.h\"\n";
+    out << "#include \"ac_fixed.h\"\n\n";
     out << "namespace bf16_exp2_packed {\n\n";
 
     out << "constexpr int LUT_SIZE = " << bf16_exp2::LUT_SIZE << ";\n";
@@ -35,6 +42,23 @@ int main() {
     out << "constexpr int COEFF_W = " << COEFF_W << ";\n";
     out << "constexpr int PACKED_W = " << PACKED_W << ";\n\n";
 
+    out << "constexpr int LOG2E_I = " << LOG2E_I << ";\n";
+    out << "constexpr int LOG2E_F = " << LOG2E_F << ";\n";
+    out << "constexpr int LOG2E_W = " << LOG2E_W << ";\n\n";
+
+    // Generate Log2E constant
+    typedef ac_fixed<LOG2E_W, LOG2E_I, false> log2e_t;
+    log2e_t log2e_val = M_LOG2E; // 1.442695...
+    
+    // We need to output the raw bits of the fixed point value to ensure exact reconstruction
+    // ac_fixed stores bits as an integer.
+    ac_int<LOG2E_W, false> log2e_bits = log2e_val.template slc<LOG2E_W>(0);
+
+    out << "// Log2(e) in 1.25 format\n";
+    out << "// Value: " << log2e_val.to_double() << "\n";
+    // Output as ac_int to ensure bit-exactness in HLS
+    out << "static const ac_int<LOG2E_W, false> log2e_int_val = 0x" << std::hex << log2e_bits.to_int64() << ";\n\n";
+    
     out << "// Packed coefficients: [ b (26 bits) | a (26 bits) ]\n";
     out << "// Format: unsigned " << COEFF_I << "." << COEFF_F << "\n";
     out << "static const ac_int<PACKED_W, false> coeffs[LUT_SIZE] = {\n";

@@ -2,6 +2,7 @@
 #define BF16_EXP2_PACKED_COEFFS_HPP
 
 #include "ac_int.h"
+#include "ac_fixed.h"
 
 namespace bf16_exp2_packed {
 
@@ -11,8 +12,16 @@ constexpr int COEFF_F = 25;
 constexpr int COEFF_W = 26;
 constexpr int PACKED_W = 52;
 
+constexpr int LOG2E_I = 1;
+constexpr int LOG2E_F = 22;
+constexpr int LOG2E_W = 23;
+
+// Log2(e) in 1.25 format
+// Value: 1.44269
+static const ac_int<LOG2E_W, false> log2e_int_val = 0x5c551d;
+
 // Packed coefficients: [ b (26 bits) | a (26 bits) ]
-// Format: unsigned 1.25
+// Format: unsigned 1.19
 static const ac_int<PACKED_W, false> coeffs[LUT_SIZE] = {
     0x6c8a9f8b22afaULL, // Index 0
     0x6cc7ef8b322a4ULL, // Index 1

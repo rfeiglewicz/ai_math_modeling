@@ -27,9 +27,9 @@ namespace bf16_cfg {
     constexpr int MANT_SRC_W = MANT_SRC_I + MANT_SRC_F;
 
     /** @brief Log2E Constant Format (1.25) */
-    constexpr int LOG2E_I = 1;
-    constexpr int LOG2E_F = 25;
-    constexpr int LOG2E_W = LOG2E_I + LOG2E_F;
+    constexpr int LOG2E_I = bf16_exp2_packed::LOG2E_I;
+    constexpr int LOG2E_F = bf16_exp2_packed::LOG2E_F;
+    constexpr int LOG2E_W = bf16_exp2_packed::LOG2E_W;
 
     /** @brief Multiplication Result Format (mant_src * log2e) -> 2.32 */
     constexpr int MANT_MULT_I = MANT_SRC_I + LOG2E_I;
@@ -195,7 +195,8 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) 
 
     // 2. Multiply by log2(e) (1.25 format)
     // log2(e) ~= 1.442695
-    ac_fixed<bf16_cfg::LOG2E_W, bf16_cfg::LOG2E_I, false> log2e_const = 1.4426950408889634073599246810018921374266459541529859341354494069;
+    ac_fixed<bf16_cfg::LOG2E_W, bf16_cfg::LOG2E_I, false> log2e_const;
+    log2e_const.set_slc(0, bf16_exp2_packed::log2e_int_val);
     
     // Result is 2.32 format (2 integer bits, 32 fractional bits)
     ac_fixed<bf16_cfg::MANT_MULT_W, bf16_cfg::MANT_MULT_I, false> mant_mult = mant_src * log2e_const;
