@@ -8,7 +8,7 @@
 /**
  * @namespace bf16_cfg
  * @brief Configuration constants for fixed-point arithmetic and BF16 format alignment.
- * * This namespace defines the bit-widths and precision parameters used throughout the 
+ * * This namespace defines the bit-widths and precision parameters used throughout the
  * piecewise linear approximation and RNE rounding logic.
  */
 namespace bf16_cfg {
@@ -36,16 +36,21 @@ namespace bf16_cfg {
     constexpr int MANT_MULT_F = MANT_SRC_F + LOG2E_F;
     constexpr int MANT_MULT_W = MANT_MULT_I + MANT_MULT_F;
 
-    /** @brief Input format. 
+    /** @brief Input format.
      * Derived from multiplication precision and max negative shift.
      */
     constexpr int IN_I = 1;
     constexpr int IN_F = MANT_MULT_F + (-INPUT_MIN_EXP);
     constexpr int IN_W = IN_I + IN_F;
 
+    /** @brief Helper to calculate log2 of LUT size. */
+    constexpr int floor_log2(int n) {
+        return (n < 2) ? 0 : 1 + floor_log2(n / 2);
+    }
+
     /** @brief Look-Up Table (LUT) parameters for piecewise segments. */
-    constexpr int LUT_ADDR_W = 7;               // Number of address bits (log2 of LUT size)
-    constexpr int LUT_SIZE = 1 << LUT_ADDR_W;   // LUT size (number of entries)
+    constexpr int LUT_SIZE = bf16_exp2_packed::LUT_SIZE;   // LUT size (number of entries)
+    constexpr int LUT_ADDR_W = floor_log2(LUT_SIZE);       // Number of address bits (log2 of LUT size)
     constexpr int LUT_MAX_IDX = LUT_SIZE - 1;   // Maximum index for coefficient mapping
 
     /** @brief Coefficient format. */
@@ -59,7 +64,7 @@ namespace bf16_cfg {
     constexpr int MULT_W = MULT_I + MULT_F;
 
     /** @brief Sign bit requirement for intermediate signed calculations. */
-    constexpr int CALC_SIGN_BIT = 1; 
+    constexpr int CALC_SIGN_BIT = 1;
 
 
     /** * @brief Intermediate calculation parameters (b - ax).
@@ -69,10 +74,10 @@ namespace bf16_cfg {
     constexpr int MAX_OP_F = (MULT_F > COEFF_F) ? MULT_F : COEFF_F;
 
     /** @brief Guard bit to prevent overflow during addition/subtraction. */
-    constexpr int CALC_ADD_GUARD = 1; 
-    
+    constexpr int CALC_ADD_GUARD = 1;
+
     /** @brief Total integer and fractional bits for the calculation pipeline. */
-    constexpr int CALC_I = MAX_OP_I + CALC_ADD_GUARD; 
+    constexpr int CALC_I = MAX_OP_I + CALC_ADD_GUARD;
     constexpr int CALC_F = MAX_OP_F;
     constexpr int CALC_W = CALC_I + CALC_F;
 
@@ -84,8 +89,8 @@ namespace bf16_cfg {
     /** * @brief Alignment and rounding logic parameters.
      * BASE_SHIFT is the difference between polynomial precision and target mantissa.
      */
-    constexpr int BASE_SHIFT = POLY_OUT_F - TARGET_MANT_W; 
-    
+    constexpr int BASE_SHIFT = POLY_OUT_F - TARGET_MANT_W;
+
     /** @brief Extended mantissa: includes carry bit, hidden bit, and mantissa bits. */
     constexpr int EXT_MANT_W = TARGET_MANT_W + 2;
     constexpr int CARRY_BIT_IDX = EXT_MANT_W - 1;    // Index of the overflow bit
@@ -102,14 +107,14 @@ typedef ac_fixed<bf16_cfg::IN_W, bf16_cfg::IN_I, false> mant_t;
 
 /** @brief Structure holding normalized polynomial result. */
 struct PolyResult {
-    ac_fixed<bf16_cfg::POLY_OUT_W, bf16_cfg::POLY_OUT_I, false> mantissa; 
+    ac_fixed<bf16_cfg::POLY_OUT_W, bf16_cfg::POLY_OUT_I, false> mantissa;
     int32_t exponent;
 };
 
 /**
  * @brief Calculates 2^(-x) using piecewise linear approximation for x in [0, 1].
  * * Formula: result = a * (-x) + b
- * Uses a Look-Up Table (LUT) for coefficients 'a' and 'b' based on the leading 
+ * Uses a Look-Up Table (LUT) for coefficients 'a' and 'b' based on the leading
  * bits of the input fractional part.
  * * @param mant_val Input value in fixed-point format.
  * @return Normalized PolyResult containing mantissa and exponent.
@@ -135,10 +140,10 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
 
     // Negate and cast to signed type: -ax
     calc_t ax_s = - (calc_t)ax_u;
-    
+
     // Add offset: res = b + (-ax)
     calc_t res = ax_s + (calc_t)b_fixed;
-    
+
     // Treat result as raw bits for normalization logic
     ac_int<bf16_cfg::CALC_W, false> res_raw = res.slc<bf16_cfg::CALC_W>(0);
 
@@ -159,13 +164,13 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
     // 2. Normalization (Barrel Shifter + Slice)
     // Aligns MSB to the left (position CALC_W - 1) to maximize precision.
     int shift = (bf16_cfg::CALC_W - 1) - msb_idx;
-    
+
     // Barrel Shifting
     ac_int<bf16_cfg::CALC_W, false> normalized = res_raw << shift;
 
     // Slicing: Extract POLY_OUT_W most significant bits
     result.mantissa.set_slc(0, normalized.slc<bf16_cfg::POLY_OUT_W>(bf16_cfg::CALC_W - bf16_cfg::POLY_OUT_W));
-    
+
     return result;
 }
 
@@ -197,7 +202,7 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) 
     // log2(e) ~= 1.442695
     ac_fixed<bf16_cfg::LOG2E_W, bf16_cfg::LOG2E_I, false> log2e_const;
     log2e_const.set_slc(0, bf16_exp2_packed::log2e_int_val);
-    
+
     // Result is in fixed-point format
     ac_fixed<bf16_cfg::MANT_MULT_W, bf16_cfg::MANT_MULT_I, false> mant_mult = mant_src * log2e_const;
 
@@ -225,24 +230,24 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) 
 
     int32_t final_exponent = poly_res.exponent + exponent_bias;
     ac_int<bf16_cfg::POLY_OUT_W, false> full_mant = poly_res.mantissa.slc<bf16_cfg::POLY_OUT_W>(0);
-    
+
     // 1. Alignment Logic for Rounding
     // Check if the result falls into subnormal range for BF16
     bool is_sub = (final_exponent < bf16_cfg::TARGET_MIN_EXP);
-    
+
     // shift_val: number of bits discarded to the right during rounding
     int shift_val = bf16_cfg::BASE_SHIFT + (is_sub ? (bf16_cfg::TARGET_MIN_EXP - final_exponent) : 0);
 
     // 2. Rounding Bit Extraction (RNE Logic)
     ac_int<bf16_cfg::POLY_OUT_W, false> m_raw = full_mant;
-    
+
     bool lsb_bit = (shift_val < bf16_cfg::POLY_OUT_W) ? (bool)m_raw[shift_val] : false;
     bool guard_bit = (shift_val > 0 && shift_val <= bf16_cfg::POLY_OUT_W) ? (bool)m_raw[shift_val - 1] : false;
-    
+
     bool sticky_bit = false;
     if (shift_val > 1) {
         if (shift_val > bf16_cfg::POLY_OUT_W) {
-            sticky_bit = (m_raw != 0); 
+            sticky_bit = (m_raw != 0);
         } else {
             ac_int<bf16_cfg::POLY_OUT_W, false> mask = (ac_int<bf16_cfg::POLY_OUT_W, false>(1) << (shift_val - 1)) - 1;
             sticky_bit = (m_raw & mask) != 0;
@@ -285,7 +290,7 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) 
         result.exponent = adjusted_exp;
         result.status.is_denormal = false;
     }
-    
+
     return result;
 }
 
