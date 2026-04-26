@@ -1,0 +1,128 @@
++-----------------------------------------------------------------------------------------------+
+|                                  BF16 EXP2 APPROXIMATION PIPELINE                             |
+|                                       (Detailed Data Flow)                                    |
++-----------------------------------------------------------------------------------------------+
+
+--------------------------------------------------------------------------------
+1. INPUT PROCESSING & RANGE REDUCTION (bf16_exp2_core_approx)
+--------------------------------------------------------------------------------
+Input: FPRaw input_parts (BF16 Decomposed)
+
+   [Mantissa Extraction]
+          |
+          v
+   mant_src (ac_fixed<MANT_SRC_W, MANT_SRC_I, false>)
+   [ MANT_SRC_W = 1 + 7 = 8 bits ]
+   [ Format: 1.xxxxxxx ]
+          |
+          v
+   [Base Conversion Check (base2 ?)]
+          | Yes: Use mant_src directly
+          | No : Multiply by log2(e)
+          v
+   IF (base == e):
+      log2e_const (ac_fixed<LOG2E_W, LOG2E_I, false>)
+            *
+      mant_src
+            =
+      mant_mult (ac_fixed<MANT_MULT_W, MANT_MULT_I, false>)
+      [ MANT_MULT_W = sum of operand widths ]
+
+   [Unified Format Conversion]
+          |
+          v
+   val (ac_fixed<IN_CONV_INT_W + IN_F, IN_CONV_INT_W, false>)
+   [ Shift Logic: val << exponent OR val >> -exponent ]
+          |
+          +---> Integer Part -> exponent_bias (int32_t)
+          |
+          +---> Fractional Part -> mant_val (mant_t)
+                [ mant_t = ac_fixed<IN_W, IN_I, false> ]
+                [ IN_W = 1 + IN_F ]
+
+--------------------------------------------------------------------------------
+2. POLYNOMIAL APPROXIMATION (bf16_exp2_poly)
+   Formula: result = b - a*x
+   (Approximating 2^-x for x in [0, 1])
+--------------------------------------------------------------------------------
+Input: mant_val (mant_t)
+
+   [LUT Indexing]
+          |
+          v
+   lut_index = mant_val.slc<LUT_ADDR_W>(MSBs of Fraction)
+   idx = LUT_MAX_IDX - lut_index
+   Fetch: packed coeffs from bf16_exp2_packed::coeffs[idx]
+
+   [Coefficient Extraction]
+   a_fixed (coeff_t), b_fixed (coeff_t)
+   [ coeff_t = ac_fixed<COEFF_W, COEFF_I, false> ]
+
+   [Linear Operation]
+          |
+          v
+   ax_u = a_fixed * mant_val
+   [ ax_u type: ac_fixed<MULT_W, MULT_I, false> ]
+   [ MULT_W = IN_W + COEFF_W ]
+          |
+          v
+   ax_s = -(calc_t)ax_u
+   [ calc_t = ac_fixed<CALC_W, CALC_I, true> (Signed) ]
+   [ CALC_W includes guard bits ]
+          |
+          v
+   res = ax_s + (calc_t)b_fixed
+   [ res type: calc_t ]
+
+   [Normalization]
+          |
+          v
+   Find MSB (Priority Encoder on res)
+   shift = (CALC_W - 1) - msb_idx
+   normalized = res << shift
+          |
+          v
+   PolyResult Output:
+     -> mantissa (ac_fixed<POLY_OUT_W, POLY_OUT_I, false>)
+     -> exponent (int32_t) = msb_idx - CALC_F
+
+--------------------------------------------------------------------------------
+3. ROUNDING & FINALIZATION (bf16_exp2_core_approx)
+--------------------------------------------------------------------------------
+Input: PolyResult poly_res
+
+   final_exponent = poly_res.exponent + exponent_bias
+
+   [Subnormal Check]
+   is_sub = (final_exponent < TARGET_MIN_EXP)
+
+   [Shift Calculation for RNE]
+   shift_val = BASE_SHIFT + (is_sub ? overflow : 0)
+   [ BASE_SHIFT = POLY_OUT_F - TARGET_MANT_W ]
+
+   [Bit Extraction]
+   m_raw = poly_res.mantissa
+   LSB    = m_raw[shift_val]
+   Guard  = m_raw[shift_val - 1]
+   Sticky = (m_raw & mask) != 0
+
+   [RNE Logic]
+   round_up = Guard && (LSB || Sticky)
+
+   [Apply Rounding]
+   result_m_ext = (m_raw >> shift_val)
+   if (round_up) result_m_ext++
+
+   [Overflow Check]
+   If result_m_ext[CARRY_BIT_IDX] == 1:
+      result_m_ext >>= 1
+      final_exponent++
+
+   [Final Construction]
+   Result Components:
+     - Sign: 0
+     - Exponent: adjusted final_exponent
+     - Mantissa: result_m_ext.slc<TARGET_MANT_W>(0)
+
+   Output: FPRaw result (BF16 Recomposed)
+--------------------------------------------------------------------------------

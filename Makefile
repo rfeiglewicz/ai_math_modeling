@@ -74,3 +74,42 @@ run_linear_approx: $(TARGET_LINEAR_APPROX)
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+# =========================================================================
+# RTL Verification (SystemVerilog + Verilator)
+# =========================================================================
+RTL_DIR    = src/rtl
+RTL_TB     = tests/rtl_compliance_test.cpp
+VERILATOR  = verilator
+VER_FLAGS  = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
+             --top-module bf16_exp2 --cc
+VER_INC    = -I$(RTL_DIR)
+VER_CFLAGS = -CFLAGS "-I../src/utils -I../src/approximations \
+             -I../$(AC_TYPES_DIR)/include -I../modeling/coeff_gen"
+RTL_SRC    = $(RTL_DIR)/bf16_exp2_pkg.sv \
+             $(RTL_DIR)/bf16_decompose.sv \
+             $(RTL_DIR)/bf16_recompose.sv \
+             $(RTL_DIR)/bf16_early_out.sv \
+             $(RTL_DIR)/bf16_log2e_mult.sv \
+             $(RTL_DIR)/bf16_unified_shift.sv \
+             $(RTL_DIR)/bf16_coeff_rom.sv \
+             $(RTL_DIR)/bf16_linear_approx.sv \
+             $(RTL_DIR)/bf16_normalize.sv \
+             $(RTL_DIR)/bf16_round.sv \
+             $(RTL_DIR)/bf16_exp2.sv
+
+.PHONY: rtl_verify rtl_verify_pipelined verilate
+
+verilate:
+	$(VERILATOR) $(VER_FLAGS) $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
+	make -j -C obj_dir -f Vbf16_exp2.mk Vbf16_exp2
+
+rtl_verify: verilate
+	./obj_dir/Vbf16_exp2
+
+rtl_verify_pipelined:
+	@echo "Building pipelined RTL (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_pl $(VER_INC) $(RTL_SRC) \
+	    --exe $(RTL_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_pl -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_pl/Vbf16_exp2 --latency 6

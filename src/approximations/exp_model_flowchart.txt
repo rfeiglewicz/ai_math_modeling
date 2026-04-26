@@ -1,0 +1,115 @@
++-----------------------------------------------------------------------+
+|                       START: bf16_exp2_approx                         |
+|                   Input: 16-bit BF16 Value (x)                        |
++-----------------------------------------------------------------------+
+                                   |
+                                   v
++-----------------------------------------------------------------------+
+|                       FP Decomposition                                |
+|  Split into: Sign, Exponent (unbiased), Mantissa, Status Flags        |
++-----------------------------------------------------------------------+
+                                   |
+                                   v
++-----------------------------------------------------------------------+
+|                    Special Case Check (NaN?)                          |
++-----------------------------------------------------------------------+
+        | Yes                                           | No
+        v                                               v
++-----------------------+               +-------------------------------+
+| Return qNaN Indefinite|               | Special Case Check (Zero?)    |
+| (Sign=1, Mant=10..0)  |               +-------------------------------+
++-----------------------+                       | Yes           | No
+                                                v               v
+                                        +---------------+ +-------------+
+                                        | Return 1.0    | | Check Inf?  |
+                                        +---------------+ +-------------+
+                                                            | Yes    | No
+                                           +----------------+        |
+                                           |                         v
+                        +----------------------------------+  +----------------+
+                        | Sign of Inf?                     |  | Check Sign of x|
+                        | (-) -> Return +0.0               |  +----------------+
+                        | (+) -> Return +1.0               |     | (+) or 0 | (-)
+                        +----------------------------------+     v          v
+                                                          +-----------+ +-----------+
+                                                          | Return 1.0| | x is NEG  |
+                                                          +-----------+ +-----------+
+                                                                             |
+                                                                             v
+                                                        +---------------------------------------+
+                                                        |      Check Input Exponent Range       |
+                                                        |        (input_parts.exponent)         |
+                                                        +---------------------------------------+
+                                                               |                   |
+                                             Exp < -9          |      Exp > 7      |  -9 <= Exp <= 7
+                                          +-------------+      |   +-------------+ |
+                                          | Return 1.0  |<-----+   | Return +0.0 | |
+                                          +-------------+          +-------------+ |
+                                                                                   |
+                                                                                   v
+                                                        +---------------------------------------+
+                                                        |     CORE APPROXIMATION PIPELINE       |
+                                                        |      (bf16_exp2_core_approx)          |
+                                                        +---------------------------------------+
+                                                                         |
+                                                                         v
++------------------------------------------------------------------------+
+|                   1. Range Reduction & Setup                           |
+|------------------------------------------------------------------------|
+| - Construct Fixed-Point Mantissa (1.f_bits)                            |
+| - If base == e: Multiply by log2(e)                                    |
+| - Convert to Unified Fixed-Point Format                                |
+| - Apply Input Exponent Shift (val << exp or val >> -exp)               |
+| - Split Result:                                                        |
+|     -> Integer Part (determines exponent bias)                         |
+|     -> Fractional Part (mant_val) (used for Poly Approx)               |
++------------------------------------------------------------------------+
+                                   |
+                                   v
++------------------------------------------------------------------------+
+|                2. Piecewise Polynomial Approximation                   |
+|                      (bf16_exp2_poly)                                  |
+|------------------------------------------------------------------------|
+| - Extract LUT Index from MSBs of Fractional Part (mant_val)            |
+| - Fetch Coefficients (a, b) from LUT                                   |
+| - Calculate: res = b - (a * mant_val)                                  |
+| - Result is in high-precision fixed-point                              |
++------------------------------------------------------------------------+
+                                   |
+                                   v
++------------------------------------------------------------------------+
+|                    3. Normalization & Exponent Calc                    |
+|------------------------------------------------------------------------|
+| - Find MSB of polynomial result (Priority Encoder)                     |
+| - Calculate Initial Exponent relative to format                        |
+| - Normalize Mantissa (Barrel Shifter - Align MSB)                      |
+| - Combine with Integer Part Bias from Step 1                           |
++------------------------------------------------------------------------+
+                                   |
+                                   v
++------------------------------------------------------------------------+
+|                    4. Rounding & Alignment (RNE)                       |
+|------------------------------------------------------------------------|
+| - Check for Subnormal Result (result_exp < TARGET_MIN_EXP)             |
+| - Calculate Shift amount for Target BF16 precision                     |
+| - Extract Guard, Round, Sticky bits                                    |
+| - Apply Round-to-Nearest-Even (RNE)                                    |
+|     -> Increment mantissa if needed                                    |
+| - Handle Post-Rounding Overflow (Carry bit)                            |
+|     -> If overflow: result_mant >> 1, result_exp++                     |
++------------------------------------------------------------------------+
+                                   |
+                                   v
++------------------------------------------------------------------------+
+|                     5. Final Result Composition                        |
+|------------------------------------------------------------------------|
+| - Assemble Sign (0), Exponent, Mantissa                                |
+| - Handle Denormal Output construction if needed                        |
+| - Set Status Flags (is_zero, is_denormal)                              |
++------------------------------------------------------------------------+
+                                   |
+                                   v
++-----------------------------------------------------------------------+
+|                     Recomposition & Return                            |
+|           Construct final 16-bit BF16 value from parts                |
++-----------------------------------------------------------------------+

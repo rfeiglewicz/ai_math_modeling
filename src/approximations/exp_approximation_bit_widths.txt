@@ -1,0 +1,110 @@
++-------------------------------------------------------------------------------------+
+|                              Core Approximation Pipeline                            |
+|                               (Bit-Exact Widths)                                    |
++-------------------------------------------------------------------------------------+
+
+                                          Input
+                                  (Decomposed BF16)
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 1. Mantissa Preparation                                                             |
+|                                                                                     |
+|   [Mantissa Source] (1.7 format)                                                    |
+|   Width: 8 bits                                                                     |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 2. Base Conversion (if base == e)                                                   |
+|                                                                                     |
+|   [Mantissa Source] * [Log2(e) Constant]                                            |
+|   (8 bits)            (23 bits, 1.22)                                               |
+|           \          /                                                              |
+|            \        /                                                               |
+|             v      v                                                                |
+|   [Multiplication Result]                                                           |
+|   Width: 31 bits (2.29 format)                                                      |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 3. Input Scaling & Shift                                                            |
+|                                                                                     |
+|   [Unified Fixed-Point Value]                                                       |
+|   Width: 47 bits (9.38 format)                                                      |
+|   Operation: Val << Exponent  OR  Val >> -Exponent                                  |
+|                                                                                     |
+|           |                                                                         |
+|           +---> [Integer Part] (Bias for Final Exponent)                            |
+|           |     Width: 9 bits                                                       |
+|           |                                                                         |
+|           +---> [Fractional Part] (Input 'x' to Poly)                               |
+|                 Width: 39 bits (1.38 format)                                        |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 4. Coefficient Lookup                                                               |
+|                                                                                     |
+|   [LUT Index] = MSBs of Fractional Part                                             |
+|   Width: 7 bits (128 entries)                                                       |
+|           |                                                                         |
+|           v                                                                         |
+|   [Fetch Coefficients a, b]                                                         |
+|   Width: 21 bits each (1.20 format)                                                 |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 5. Polynomial Calculation (b - axis)                                                |
+|                                                                                     |
+|   Step A: a * x                                                                     |
+|     [Coefficient a] * [Fractional Part x]                                           |
+|     (21 bits)         (39 bits)                                                     |
+|             \        /                                                              |
+|              v      v                                                               |
+|     [Product]                                                                       |
+|     Width: 60 bits (2.58 format)                                                    |
+|                                                                                     |
+|   Step B: b - (a*x)                                                                 |
+|     [Coefficient b] - [Product]                                                     |
+|     (Matches largest format)                                                        |
+|                                                                                     |
+|     [Result Unnormalized]                                                           |
+|     Width: 61 bits (Signed, 3.58 format with guard)                                 |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 6. Normalization                                                                    |
+|                                                                                     |
+|   [Priority Encoder] -> Find MSB                                                    |
+|   [Barrel Shifter]   -> Left Align MSB                                              |
+|                                                                                     |
+|   [Normalized Mantissa]                                                             |
+|   Width: 59 bits (kept for rounding)                                                |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 7. Rounding (Round-Nearest-Even)                                                    |
+|                                                                                     |
+|   [Target Format] BF16 (1.7 mantissa)                                               |
+|                                                                                     |
+|   [Guard Bit]   [Round Bit]   [Sticky Bit]                                          |
+|   (Bit 58-N)    (Bit 58-N-1)  (OR'd remaining)                                      |
+|                                                                                     |
+|   Logic: If (Round && (Guard || Sticky)) -> Increment                               |
++-------------------------------------------------------------------------------------+
+                                          |
+                                          v
++-------------------------------------------------------------------------------------+
+| 8. Final Output Construction                                                        |
+|                                                                                     |
+|   [Sign]     1 bit  (Always 0 for 2^x)                                              |
+|   [Exponent] 8 bits (Bias + Norm_Shift + Int_Part)                                  |
+|   [Mantissa] 7 bits (Rounded)                                                       |
+|                                                                                     |
+|   Total: 16 bits (BF16)                                                             |
++-------------------------------------------------------------------------------------+
