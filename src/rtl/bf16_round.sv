@@ -25,6 +25,7 @@ module bf16_round
 )(
     input  logic                                clk,
     input  logic                                rst_n,
+    input  logic                                pipe_en,
     input  logic [POLY_OUT_W-1:0]               poly_mantissa,
     input  logic signed [8:0]                   poly_exponent,
     input  logic signed [IN_CONV_INT_W-1:0]     exponent_bias,  // int_part
@@ -132,8 +133,8 @@ module bf16_round
     generate
         if (REGISTER_OUTPUT) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) rounded_fp <= '0;
-                else        rounded_fp <= rounded_comb;
+                if (!rst_n)      rounded_fp <= '0;
+                else if (pipe_en) rounded_fp <= rounded_comb;
             end
         end else begin : gen_comb
             assign rounded_fp = rounded_comb;

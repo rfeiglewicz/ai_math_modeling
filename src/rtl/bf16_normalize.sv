@@ -23,6 +23,7 @@ module bf16_normalize
 )(
     input  logic                      clk,
     input  logic                      rst_n,
+    input  logic                      pipe_en,
     input  logic [CALC_W-1:0]        unnormalized_res,
     output logic [POLY_OUT_W-1:0]    normalized_mant,
     output logic signed [8:0]        poly_exponent
@@ -61,7 +62,7 @@ module bf16_normalize
                 if (!rst_n) begin
                     normalized_mant <= '0;
                     poly_exponent   <= '0;
-                end else begin
+                end else if (pipe_en) begin
                     normalized_mant <= poly_mant_comb;
                     poly_exponent   <= poly_exp_comb;
                 end

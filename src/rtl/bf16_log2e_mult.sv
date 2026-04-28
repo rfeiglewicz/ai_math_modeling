@@ -23,6 +23,7 @@ module bf16_log2e_mult
 )(
     input  logic                                   clk,
     input  logic                                   rst_n,
+    input  logic                                   pipe_en,
     input  logic                                   base2,
     input  logic [MANT_SRC_W-1:0]                  mant_src,  // 1.7 unsigned
     // Multiplication result: 2.29 = MANT_MULT_W bits
@@ -53,8 +54,8 @@ module bf16_log2e_mult
     generate
         if (REGISTER_OUTPUT) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) mant_out <= '0;
-                else        mant_out <= mant_out_comb;
+                if (!rst_n)      mant_out <= '0;
+                else if (pipe_en) mant_out <= mant_out_comb;
             end
         end else begin : gen_comb
             assign mant_out = mant_out_comb;

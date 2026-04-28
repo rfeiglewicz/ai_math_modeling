@@ -11,6 +11,7 @@ module bf16_recompose
 )(
     input  logic        clk,
     input  logic        rst_n,
+    input  logic        pipe_en,
     input  fp_raw_t     components,
     output logic [15:0] bf16_out
 );
@@ -59,8 +60,8 @@ module bf16_recompose
     generate
         if (REGISTER_OUTPUT) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) bf16_out <= 16'h0000;
-                else        bf16_out <= bf16_comb;
+                if (!rst_n)      bf16_out <= 16'h0000;
+                else if (pipe_en) bf16_out <= bf16_comb;
             end
         end else begin : gen_comb
             assign bf16_out = bf16_comb;

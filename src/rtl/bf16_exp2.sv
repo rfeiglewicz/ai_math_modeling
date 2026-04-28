@@ -1,21 +1,25 @@
 // =============================================================================
 // bf16_exp2.sv
 // Top-level module for the BF16 exp2 / expe approximation pipeline.
+// AXI-Stream interface: s_axis (slave/input) and m_axis (master/output).
 //
 // Architecture (8 functional sub-modules):
 //   1. bf16_decompose     - BF16 bit field decomposition
 //   2. bf16_early_out     - Special case and range check detector
 //   3. bf16_log2e_mult    - Optional log2(e) multiply for exp(x) mode
 //   4. bf16_unified_shift - Input exponent scaling, int/frac split
-//   5. bf16_linear_approx - ROM-based piecewise linear approximation
+//   5. bf16_linear_approx - ROM-based piecewise linear approximation (BRAM)
 //   6. bf16_normalize     - Priority encoder + barrel shifter
 //   7. bf16_round         - RNE rounding and output assembly
 //   8. bf16_recompose     - Output FP recomposition to 16-bit BF16
 //
 // Pipeline notes:
 //   When REGISTER_STAGES=1, each sub-module inserts one register at its output.
-//   The eo_code signal is propagated through delay registers separately to
-//   stay time-aligned with the core path results before the final mux.
+//   pipe_en signal gates ALL pipeline registers for AXI-Stream backpressure.
+//   When m_axis_tready=0 and m_axis_tvalid=1, the entire pipeline freezes.
+//
+// Pipeline depth (REGISTER_STAGES=1): 7 FF stages -> 6 cycle latency.
+// Pipeline depth (REGISTER_STAGES=0): 0 (fully combinational, single-cycle).
 //
 // Parameterizable:
 //   REGISTER_STAGES  - 1 = add output registers to all sub-modules
@@ -35,10 +39,68 @@ module bf16_exp2
 )(
     input  logic        clk,
     input  logic        rst_n,
-    input  logic [15:0] bf16_in,
-    input  logic        base2,   // 1 = 2^x mode;  0 = e^x mode
-    output logic [15:0] bf16_out
+
+    // Slave AXI-Stream (input)
+    input  logic [15:0] s_axis_tdata,    // BF16 input value
+    input  logic        s_axis_tuser,    // 1 = 2^x (base2), 0 = e^x
+    input  logic        s_axis_tvalid,
+    output logic        s_axis_tready,
+
+    // Master AXI-Stream (output)
+    output logic [15:0] m_axis_tdata,    // BF16 result
+    output logic        m_axis_tvalid,
+    input  logic        m_axis_tready
 );
+
+    // =========================================================================
+    // Pipeline depth: 7 register stages when REGISTER_STAGES=1.
+    // Data path FFs: decompose, log2e_mult, unified_shift, BRAM(linear_approx),
+    //                normalize, round, recompose.
+    // =========================================================================
+    localparam int PIPE_DEPTH = REGISTER_STAGES ? 7 : 0;
+
+    // =========================================================================
+    // AXI-Stream handshake & pipeline enable
+    //
+    // "All-stall" approach: when downstream cannot accept (m_axis_tready=0)
+    // and the output is valid, the ENTIRE pipeline freezes.
+    //
+    // pipe_en=1 => pipeline advances (all FFs capture new values)
+    // pipe_en=0 => pipeline holds    (all FFs retain their values)
+    // =========================================================================
+    logic pipe_en;
+
+    generate
+        if (REGISTER_STAGES) begin : gen_axi_pipelined
+            // --- Valid shift register (PIPE_DEPTH stages) ---
+            logic [PIPE_DEPTH-1:0] vld_sr;
+
+            assign m_axis_tvalid = vld_sr[PIPE_DEPTH-1];
+            assign pipe_en       = m_axis_tready | ~m_axis_tvalid;
+            assign s_axis_tready = pipe_en;
+
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n)
+                    vld_sr <= '0;
+                else if (pipe_en)
+                    vld_sr <= {vld_sr[PIPE_DEPTH-2:0], s_axis_tvalid};
+            end
+        end else begin : gen_axi_comb
+            // Combinational mode: data passes through in one cycle
+            assign m_axis_tvalid = s_axis_tvalid;
+            assign s_axis_tready = m_axis_tready;
+            assign pipe_en       = 1'b1;
+        end
+    endgenerate
+
+    // =========================================================================
+    // Internal wiring from AXI ports to datapath
+    // =========================================================================
+    logic [15:0] bf16_in;
+    logic        base2;
+
+    assign bf16_in = s_axis_tdata;
+    assign base2   = s_axis_tuser;
 
     // =========================================================================
     // Stage 1: Decompose
@@ -50,6 +112,7 @@ module bf16_exp2
     ) u_decompose (
         .clk       (clk),
         .rst_n     (rst_n),
+        .pipe_en   (pipe_en),
         .bf16_in   (bf16_in),
         .decomposed(s1_decomposed)
     );
@@ -64,6 +127,7 @@ module bf16_exp2
     ) u_early_out (
         .clk       (clk),
         .rst_n     (rst_n),
+        .pipe_en   (pipe_en),
         .decomposed(s1_decomposed),
         .eo_code   (s2_eo_code)
     );
@@ -71,18 +135,16 @@ module bf16_exp2
     // =========================================================================
     // Pipeline alignment registers (active only when REGISTER_STAGES=1).
     //
-    // Problem: some signals skip stages and arrive 1+ cycles too early:
-    //   - base2 (raw port) is used in stage 3 alongside s1_decomposed (T+1)
-    //     → needs 1 extra FF so both arrive at T+1
-    //   - s1_decomposed.exponent is used in stage 4 alongside s3_mant_out (T+2)
-    //     → needs 1 extra FF after stage-1 output so it arrives at T+2
-    //   - s4_int_part is used in stage 7 alongside s6_norm_mant (T+5)
-    //     → needs 2 extra FFs (T+3 → T+4 → T+5)
+    //   - base2 (raw port) needs 1 extra FF to match s1_decomposed (T+1)
+    //   - exponent needs 1 extra FF to match s3_mant_out (T+2)
+    //   - int_part needs 2 extra FFs to match s6 outputs (T+5)
+    //
+    // All alignment FFs are gated by pipe_en.
     // =========================================================================
-    logic                            s3_base2;      // base2 delayed to match s1_decomposed
-    logic signed [8:0]               s4_exponent;  // exponent aligned with s3_mant_out
-    logic signed [IN_CONV_INT_W-1:0] s5_int_part;  // int_part delayed +1
-    logic signed [IN_CONV_INT_W-1:0] s6_int_part;  // int_part delayed +2 (aligned with s6_poly_exp)
+    logic                            s3_base2;
+    logic signed [8:0]               s4_exponent;
+    logic signed [IN_CONV_INT_W-1:0] s5_int_part;
+    logic signed [IN_CONV_INT_W-1:0] s6_int_part;
 
     generate
         if (REGISTER_STAGES) begin : gen_align_regs
@@ -90,7 +152,7 @@ module bf16_exp2
                 if (!rst_n) begin
                     s3_base2    <= 1'b1;
                     s4_exponent <= '0;
-                end else begin
+                end else if (pipe_en) begin
                     s3_base2    <= base2;
                     s4_exponent <= s1_decomposed.exponent;
                 end
@@ -103,9 +165,8 @@ module bf16_exp2
 
     // =========================================================================
     // Stage 3: Log2(e) multiply (for expe mode; bypass in base2 mode)
-    // Input: s1_decomposed.mantissa + hidden bit (both at T+1)
     // =========================================================================
-    logic [MANT_SRC_W-1:0]  s3_mant_src;    // {hidden_bit, mantissa}
+    logic [MANT_SRC_W-1:0]  s3_mant_src;
     logic [MANT_MULT_W-1:0] s3_mant_out;
 
     assign s3_mant_src = {s1_decomposed.hidden_bit, s1_decomposed.mantissa};
@@ -118,7 +179,8 @@ module bf16_exp2
     ) u_log2e_mult (
         .clk      (clk),
         .rst_n    (rst_n),
-        .base2    (s3_base2),      // delayed to match mant_src latency
+        .pipe_en  (pipe_en),
+        .base2    (s3_base2),
         .mant_src (s3_mant_src),
         .mant_out (s3_mant_out)
     );
@@ -134,14 +196,15 @@ module bf16_exp2
     ) u_unified_shift (
         .clk      (clk),
         .rst_n    (rst_n),
+        .pipe_en  (pipe_en),
         .mant_in  (s3_mant_out),
-        .exponent (s4_exponent),   // delayed to match s3_mant_out latency
+        .exponent (s4_exponent),
         .frac_part(s4_frac_part),
         .int_part (s4_int_part)
     );
 
     // =========================================================================
-    // Stage 5: Piecewise linear approximation
+    // Stage 5: Piecewise linear approximation (BRAM coefficient ROM)
     // =========================================================================
     logic [CALC_W-1:0] s5_unnorm_res;
 
@@ -152,6 +215,7 @@ module bf16_exp2
     ) u_lin_approx (
         .clk             (clk),
         .rst_n           (rst_n),
+        .pipe_en         (pipe_en),
         .frac_part       (s4_frac_part),
         .unnormalized_res(s5_unnorm_res)
     );
@@ -167,6 +231,7 @@ module bf16_exp2
     ) u_normalize (
         .clk             (clk),
         .rst_n           (rst_n),
+        .pipe_en         (pipe_en),
         .unnormalized_res(s5_unnorm_res),
         .normalized_mant (s6_norm_mant),
         .poly_exponent   (s6_poly_exp)
@@ -182,7 +247,7 @@ module bf16_exp2
                 if (!rst_n) begin
                     s5_int_part <= '0;
                     s6_int_part <= '0;
-                end else begin
+                end else if (pipe_en) begin
                     s5_int_part <= s4_int_part;
                     s6_int_part <= s5_int_part;
                 end
@@ -203,19 +268,16 @@ module bf16_exp2
     ) u_round (
         .clk          (clk),
         .rst_n        (rst_n),
+        .pipe_en      (pipe_en),
         .poly_mantissa(s6_norm_mant),
         .poly_exponent(s6_poly_exp),
-        .exponent_bias(s6_int_part),   // delayed 2 extra cycles to align with s6_poly_exp
+        .exponent_bias(s6_int_part),
         .rounded_fp   (s7_rounded_fp)
     );
 
     // =========================================================================
     // Delay chain for eo_code to keep it aligned with s7_rounded_fp.
-    // Pipeline latency breakdown (REGISTER_STAGES=1):
-    //   s2_eo_code is valid at T+2 (after stage1 + stage2 registers).
-    //   s7_rounded_fp is valid at T+6 (stages 1,3,4,5,6,7 registers).
-    //   → EO_DELAY_STAGES = 6 - 2 = 4 extra cycles.
-    // With REGISTER_STAGES=0: no delay needed (all combinational).
+    // EO_DELAY_STAGES = 4 when REGISTER_STAGES=1 (eo at T+2, data at T+6).
     // =========================================================================
     localparam int EO_DELAY_STAGES = REGISTER_STAGES ? 4 : 0;
 
@@ -225,8 +287,8 @@ module bf16_exp2
     generate
         for (genvar i = 0; i < EO_DELAY_STAGES; i++) begin : gen_eo_delay
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) eo_delay[i+1] <= EO_PLUS_ONE;
-                else        eo_delay[i+1] <= eo_delay[i];
+                if (!rst_n)      eo_delay[i+1] <= EO_PLUS_ONE;
+                else if (pipe_en) eo_delay[i+1] <= eo_delay[i];
             end
         end
     endgenerate
@@ -245,11 +307,11 @@ module bf16_exp2
                 s8_final_fp              = '0;
                 s8_final_fp.status.is_nan = 1'b1;
                 s8_final_fp.sign          = 1'b1;
-                s8_final_fp.mantissa      = 7'b100_0000;  // qNaN indefinite: MSB of mant set
+                s8_final_fp.mantissa      = 7'b100_0000;
             end
             EO_PLUS_ONE: begin
                 s8_final_fp              = '0;
-                s8_final_fp.exponent     = 9'sd0;     // unbiased 0 = biased 127 -> 3f80
+                s8_final_fp.exponent     = 9'sd0;
                 s8_final_fp.hidden_bit   = 1'b1;
             end
             EO_PLUS_ZERO: begin
@@ -262,13 +324,18 @@ module bf16_exp2
         endcase
     end
 
+    logic [15:0] bf16_out;
+
     bf16_recompose #(
         .REGISTER_OUTPUT(REGISTER_STAGES)
     ) u_recompose (
         .clk       (clk),
         .rst_n     (rst_n),
+        .pipe_en   (pipe_en),
         .components(s8_final_fp),
         .bf16_out  (bf16_out)
     );
+
+    assign m_axis_tdata = bf16_out;
 
 endmodule : bf16_exp2

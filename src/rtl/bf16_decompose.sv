@@ -11,6 +11,7 @@ module bf16_decompose
 )(
     input  logic        clk,
     input  logic        rst_n,
+    input  logic        pipe_en,
     input  logic [15:0] bf16_in,
     output fp_raw_t     decomposed
 );
@@ -60,8 +61,8 @@ module bf16_decompose
     generate
         if (REGISTER_OUTPUT) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) decomposed <= '0;
-                else        decomposed <= decomposed_comb;
+                if (!rst_n)      decomposed <= '0;
+                else if (pipe_en) decomposed <= decomposed_comb;
             end
         end else begin : gen_comb
             assign decomposed = decomposed_comb;

@@ -25,6 +25,7 @@ module bf16_coeff_rom #(
     parameter bit REGISTERED = 1'b1
 )(
     input  logic              clk,
+    input  logic              pipe_en,
     input  logic [ADDR_W-1:0] addr,
     output logic [DATA_W-1:0] data
 );
@@ -174,7 +175,7 @@ module bf16_coeff_rom #(
     generate
         if (REGISTERED) begin : gen_sync
             always_ff @(posedge clk)
-                data <= rom[addr];
+                if (pipe_en) data <= rom[addr];
         end else begin : gen_async
             assign data = rom[addr];
         end

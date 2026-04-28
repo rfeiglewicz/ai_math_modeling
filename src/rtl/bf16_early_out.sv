@@ -20,6 +20,7 @@ module bf16_early_out
 )(
     input  logic        clk,
     input  logic        rst_n,
+    input  logic        pipe_en,
     input  fp_raw_t     decomposed,
     output early_out_t  eo_code
 );
@@ -52,8 +53,8 @@ module bf16_early_out
     generate
         if (REGISTER_OUTPUT) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) eo_code <= EO_PLUS_ONE;
-                else        eo_code <= eo_comb;
+                if (!rst_n)      eo_code <= EO_PLUS_ONE;
+                else if (pipe_en) eo_code <= eo_comb;
             end
         end else begin : gen_comb
             assign eo_code = eo_comb;

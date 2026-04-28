@@ -98,7 +98,7 @@ RTL_SRC    = $(RTL_DIR)/bf16_exp2_pkg.sv \
              $(RTL_DIR)/bf16_round.sv \
              $(RTL_DIR)/bf16_exp2.sv
 
-.PHONY: rtl_verify rtl_verify_pipelined verilate
+.PHONY: rtl_verify rtl_verify_pipelined verilate rtl_axi_test
 
 verilate:
 	$(VERILATOR) $(VER_FLAGS) $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
@@ -113,3 +113,10 @@ rtl_verify_pipelined:
 	    --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_pl -f Vbf16_exp2.mk Vbf16_exp2
 	./obj_dir_pl/Vbf16_exp2 --latency 6
+
+rtl_axi_test:
+	@echo "Building AXI-Stream protocol test (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_axi $(VER_INC) $(RTL_SRC) \
+	    --exe tests/rtl_axi_stream_test.cpp $(VER_CFLAGS)
+	make -j -C obj_dir_axi -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_axi/Vbf16_exp2

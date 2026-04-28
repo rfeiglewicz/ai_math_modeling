@@ -31,6 +31,7 @@ module bf16_unified_shift
 )(
     input  logic                                           clk,
     input  logic                                           rst_n,
+    input  logic                                           pipe_en,
     input  logic [MANT_MULT_W-1:0]                         mant_in,    // 2.29 unsigned from log2e_mult
     input  logic signed [8:0]                              exponent,   // Unbiased input exponent
     output logic [IN_F-1:0]                                frac_part,  // 38-bit fractional (poly x)
@@ -84,7 +85,7 @@ module bf16_unified_shift
                 if (!rst_n) begin
                     frac_part <= '0;
                     int_part  <= '0;
-                end else begin
+                end else if (pipe_en) begin
                     frac_part <= frac_part_comb;
                     int_part  <= int_part_comb;
                 end

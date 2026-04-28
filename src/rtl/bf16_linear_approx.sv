@@ -27,6 +27,7 @@ module bf16_linear_approx
 )(
     input  logic              clk,
     input  logic              rst_n,
+    input  logic              pipe_en,
     input  logic [IN_F-1:0]   frac_part,         // 38-bit input x (1.37 unsigned)
     output logic [CALC_W-1:0] unnormalized_res   // 62-bit result  (4.58 signed)
 );
@@ -58,9 +59,10 @@ module bf16_linear_approx
         .ADDR_W    (LUT_ADDR_W),
         .REGISTERED(REGISTER_OUTPUT)
     ) u_coeff_rom (
-        .clk  (clk),
-        .addr (lut_idx),
-        .data (packed_coeff)
+        .clk     (clk),
+        .pipe_en (pipe_en),
+        .addr    (lut_idx),
+        .data    (packed_coeff)
     );
 
     logic [COEFF_W-1:0] coeff_a_w;
@@ -80,8 +82,8 @@ module bf16_linear_approx
     generate
         if (REGISTER_OUTPUT) begin : gen_frac_delay
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) frac_aligned <= '0;
-                else        frac_aligned <= frac_part;
+                if (!rst_n)      frac_aligned <= '0;
+                else if (pipe_en) frac_aligned <= frac_part;
             end
         end else begin : gen_frac_wire
             assign frac_aligned = frac_part;
