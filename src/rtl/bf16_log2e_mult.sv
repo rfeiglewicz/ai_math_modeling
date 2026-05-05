@@ -3,13 +3,18 @@
 // Multiplies mantissa source (1.7 format) by log2(e) constant (1.22 format).
 // Used only when base2=0 (exp(x) mode). When base2=1, output equals input.
 //
+// After multiplication, an optional RNE (Round to Nearest Even) rounding
+// reduces the 2.29 product to 2.MANT_MULT_ROUND_FRAC precision.
+// Default MANT_MULT_ROUND_FRAC = MANT_MULT_F (29) = full precision (no bits dropped).
+//
 // Parameterizable:
 //   LOG2E_I               - integer bits of the constant (default: 1)
 //   LOG2E_F               - fractional bits of the constant (default: 22)
 //   LOG2E_VAL             - fixed-point value of log2(e) (default: 0x5c551d)
+//   MANT_MULT_ROUND_FRAC  - fractional bits to keep after RNE (default: 29)
 //
 // NOTE: The output port mant_out provides the effective mantissa (either
-// mant_src for base2 mode, or mant_mult for exp(x) mode). Both are provided
+// mant_src for base2 mode, or mant_mult_rne for exp(x) mode). Both are provided
 // so the top level does not require a MUX chain.
 // =============================================================================
 
@@ -19,6 +24,7 @@ module bf16_log2e_mult
     parameter int LOG2E_I   = LOG2E_I_DEFAULT,    // 1
     parameter int LOG2E_F   = LOG2E_F_DEFAULT,    // 22
     parameter int LOG2E_VAL = LOG2E_VAL_DEFAULT,  // 0x5c551d
+    parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 29 = no rounding
     parameter bit REGISTER_OUTPUT = 1'b0
 )(
     input  logic                                   clk,
@@ -32,11 +38,58 @@ module bf16_log2e_mult
 
     localparam int LOG2E_W = LOG2E_I + LOG2E_F;
 
+    // -------------------------------------------------------------------------
+    // RNE rounding parameters
+    // -------------------------------------------------------------------------
+    // Bits to discard from the 2.29 product
+    localparam int DISCARD_BITS = MANT_MULT_F - MANT_MULT_ROUND_FRAC;
+    // Rounded width = MANT_MULT_I + MANT_MULT_ROUND_FRAC
+    localparam int ROUNDED_W = MANT_MULT_I + MANT_MULT_ROUND_FRAC;
+
     logic [MANT_MULT_W-1:0] mant_mult;
+    logic [MANT_MULT_W-1:0] mant_mult_rne;
     logic [MANT_MULT_W-1:0] mant_out_comb;
 
     // Product: mant_src (1.7) * log2e (1.22) = 2.29 = 31 bits
     assign mant_mult = mant_src * LOG2E_VAL[LOG2E_W-1:0];
+
+    // -------------------------------------------------------------------------
+    // RNE (Round to Nearest Even) rounding of mant_mult from 2.29 to
+    // 2.MANT_MULT_ROUND_FRAC.
+    //
+    // When MANT_MULT_ROUND_FRAC == MANT_MULT_F (29), DISCARD_BITS=0 and
+    // the logic is optimized away (no rounding).
+    // -------------------------------------------------------------------------
+    generate
+        if (DISCARD_BITS == 0) begin : gen_no_round
+            // No rounding needed - full precision
+            assign mant_mult_rne = mant_mult;
+        end else begin : gen_rne
+            logic                       lsb_bit;    // bit at DISCARD_BITS
+            logic                       guard_bit;  // bit at DISCARD_BITS-1
+            logic                       sticky_bit; // OR of bits below guard
+            logic                       round_up;
+            logic [ROUNDED_W-1:0]       truncated;
+            logic [ROUNDED_W-1:0]       rounded;
+
+            assign lsb_bit   = mant_mult[DISCARD_BITS];
+            assign guard_bit  = mant_mult[DISCARD_BITS-1];
+
+            if (DISCARD_BITS > 1) begin : gen_sticky
+                assign sticky_bit = |mant_mult[DISCARD_BITS-2:0];
+            end else begin : gen_no_sticky
+                assign sticky_bit = 1'b0;
+            end
+
+            // RNE: round up if guard=1 AND (lsb=1 OR sticky=1)
+            assign round_up  = guard_bit & (lsb_bit | sticky_bit);
+            assign truncated = mant_mult[MANT_MULT_W-1 -: ROUNDED_W];
+            assign rounded   = truncated + {{(ROUNDED_W-1){1'b0}}, round_up};
+
+            // Zero-extend rounded value back to MANT_MULT_W width
+            assign mant_mult_rne = {rounded, {DISCARD_BITS{1'b0}}};
+        end
+    endgenerate
 
     // Mux: select base2 or base-e path
     // For base2 mode, zero-extend mant_src to MANT_MULT_W bits by left-shifting
@@ -48,7 +101,7 @@ module bf16_log2e_mult
         if (base2)
             mant_out_comb = MANT_MULT_W'({mant_src, {ALIGN{1'b0}}});
         else
-            mant_out_comb = mant_mult;
+            mant_out_comb = mant_mult_rne;
     end
 
     generate

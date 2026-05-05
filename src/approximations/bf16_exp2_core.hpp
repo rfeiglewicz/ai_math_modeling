@@ -178,10 +178,15 @@ inline PolyResult bf16_exp2_poly(mant_t mant_val) {
  * @brief Core hardware-accurate approximation of exp(x) (base e) or exp2(x) (base 2).
  * * Handles input decomposition, range reduction to [0, 1], polynomial evaluation,
  * and standard BF16 rounding (Round to Nearest Even).
- * * @param input_parts Decomposed BF16 input structure.
+ *
+ * @tparam MANT_MULT_ROUND_FRAC Number of fractional bits to keep after RNE
+ *         rounding of the log2(e) multiplication result (base-e path only).
+ *         Default = MANT_MULT_F (29), i.e. full precision / no rounding.
+ * @param input_parts Decomposed BF16 input structure.
  * @param base2 If true, calculates 2^x. If false, calculates e^x.
  * @return Decomposed BF16 result structure.
  */
+template<int MANT_MULT_ROUND_FRAC = bf16_cfg::MANT_MULT_F>
 inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) {
     FPRaw result = {};
     mant_t mant_val = 0;
@@ -206,10 +211,18 @@ inline FPRaw bf16_exp2_core_approx(const FPRaw& input_parts, bool base2 = true) 
     // Result is in fixed-point format
     ac_fixed<bf16_cfg::MANT_MULT_W, bf16_cfg::MANT_MULT_I, false> mant_mult = mant_src * log2e_const;
 
+    // Optional RNE rounding to reduced precision (base-e path only).
+    // When MANT_MULT_ROUND_FRAC < MANT_MULT_F the assignment truncates
+    // fractional bits with convergent (round-to-nearest-even) rounding.
+    static_assert(MANT_MULT_ROUND_FRAC >= 1 && MANT_MULT_ROUND_FRAC <= bf16_cfg::MANT_MULT_F,
+                  "MANT_MULT_ROUND_FRAC must be in [1, MANT_MULT_F]");
+    constexpr int ROUNDED_W = bf16_cfg::MANT_MULT_I + MANT_MULT_ROUND_FRAC;
+    ac_fixed<ROUNDED_W, bf16_cfg::MANT_MULT_I, false, AC_RND_CONV> mant_mult_rnd = mant_mult;
+
     // 3. Move to Unified Format
     // We need integer bits because the maximum negative exponent is defined in config,
     // so the shift will be calculated. The multiplication result has integer bits defined in config.
-    val = base2 ? (unified_t)mant_src : (unified_t)mant_mult;
+    val = base2 ? (unified_t)mant_src : (unified_t)mant_mult_rnd;
 
     // Shift based on exponent
     if (temp_exponent >= 0) {

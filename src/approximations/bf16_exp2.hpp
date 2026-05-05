@@ -19,10 +19,14 @@
  *    - Exp < -9: Return 1.0
  *    - Exp > 7:  Return +0.0
  *    - Exp [-9, 7]: Placeholder for approximation
- * 
+ *
+ * @tparam MANT_MULT_ROUND_FRAC Fractional bits kept after RNE rounding of
+ *         log2(e) multiply (base-e only). Default = full precision.
  * @param raw_input Raw 16-bit BF16 payload
+ * @param base2     If true exp2, if false exp(e)
  * @return Raw 16-bit BF16 result
  */
+template<int MANT_MULT_ROUND_FRAC = bf16_cfg::MANT_MULT_F>
 inline uint16_t bf16_exp2_approx(uint16_t raw_input, bool base2 = true) {
     // 1. Decompose input
     FPRaw input_parts = fp_decompose(static_cast<uint32_t>(raw_input), FPType::BF16);
@@ -79,7 +83,7 @@ inline uint16_t bf16_exp2_approx(uint16_t raw_input, bool base2 = true) {
             } 
             else {
                 // Exponent range -> [-9, 7] -> Use Core Approximation
-                core_approx_result = bf16_exp2_core_approx(input_parts, base2);
+                core_approx_result = bf16_exp2_core_approx<MANT_MULT_ROUND_FRAC>(input_parts, base2);
             }
         }
     }

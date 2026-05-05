@@ -34,6 +34,7 @@ module bf16_exp2
     parameter int LOG2E_I    = LOG2E_I_DEFAULT,
     parameter int LOG2E_F    = LOG2E_F_DEFAULT,
     parameter int LOG2E_VAL  = LOG2E_VAL_DEFAULT,
+    parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // RNE rounding after log2e mult (29=full)
     parameter int COEFF_W    = COEFF_W_DEFAULT,
     parameter int COEFF_F    = COEFF_F_DEFAULT
 )(
@@ -172,10 +173,11 @@ module bf16_exp2
     assign s3_mant_src = {s1_decomposed.hidden_bit, s1_decomposed.mantissa};
 
     bf16_log2e_mult #(
-        .LOG2E_I         (LOG2E_I),
-        .LOG2E_F         (LOG2E_F),
-        .LOG2E_VAL       (LOG2E_VAL),
-        .REGISTER_OUTPUT (REGISTER_STAGES)
+        .LOG2E_I              (LOG2E_I),
+        .LOG2E_F              (LOG2E_F),
+        .LOG2E_VAL            (LOG2E_VAL),
+        .MANT_MULT_ROUND_FRAC(MANT_MULT_ROUND_FRAC),
+        .REGISTER_OUTPUT      (REGISTER_STAGES)
     ) u_log2e_mult (
         .clk      (clk),
         .rst_n    (rst_n),
