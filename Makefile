@@ -17,6 +17,9 @@ TARGET_ULP_ANALYSIS = $(BUILD_DIR)/ulp_error_analysis
 TARGET_LINEAR_APPROX = $(BUILD_DIR)/test_bf16_linear_approx
 TARGET_GEN_PACKED = $(BUILD_DIR)/gen_packed_coeffs
 TARGET_RNE_SWEEP = $(BUILD_DIR)/rne_rounding_sweep
+TARGET_GEN_EXPE_LUT = $(BUILD_DIR)/gen_bf16_expe_lut
+TARGET_EXPE_LUT_TEST = $(BUILD_DIR)/bf16_expe_lut_test
+TARGET_GEN_EXPE_LUT_APPROX = $(BUILD_DIR)/gen_bf16_expe_lut_approx
 
 # Source files
 TEST_SRC_MAIN = $(TEST_DIR)/fp_utils_test.cpp
@@ -26,6 +29,9 @@ TEST_SRC_ULP_ANALYSIS = $(TEST_DIR)/ulp_error_analysis.cpp
 TEST_SRC_LINEAR_APPROX = $(TEST_DIR)/test_bf16_linear_approx.cpp
 SRC_GEN_PACKED = modeling/coeff_gen/gen_packed_coeffs.cpp
 TEST_SRC_RNE_SWEEP = $(TEST_DIR)/rne_rounding_sweep.cpp
+TEST_SRC_GEN_EXPE_LUT = $(TEST_DIR)/gen_bf16_expe_lut.cpp
+TEST_SRC_EXPE_LUT_TEST = $(TEST_DIR)/bf16_expe_lut_test.cpp
+TEST_SRC_GEN_EXPE_LUT_APPROX = $(TEST_DIR)/gen_bf16_expe_lut_approx.cpp
 
 # Default rule: build all
 .PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx gen_packed rne_sweep clean
@@ -58,6 +64,15 @@ $(TARGET_GEN_PACKED): $(SRC_GEN_PACKED) | $(BUILD_DIR)
 $(TARGET_RNE_SWEEP): $(TEST_SRC_RNE_SWEEP) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
 
+$(TARGET_GEN_EXPE_LUT): $(TEST_SRC_GEN_EXPE_LUT) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+$(TARGET_EXPE_LUT_TEST): $(TEST_SRC_EXPE_LUT_TEST) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
+
+$(TARGET_GEN_EXPE_LUT_APPROX): $(TEST_SRC_GEN_EXPE_LUT_APPROX) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
 # Run rules
 run: $(TARGET_MAIN)
 	./$(TARGET_MAIN)
@@ -71,11 +86,22 @@ gen_approx: $(TARGET_GEN_APPROX)
 ulp_analysis: $(TARGET_ULP_ANALYSIS)
 	./$(TARGET_ULP_ANALYSIS)
 
+# Generate the tabulated (full-LUT) expe output for the ULP analyzer.
+gen_expe_lut_approx: $(TARGET_GEN_EXPE_LUT_APPROX) gen_expe_lut
+	./$(TARGET_GEN_EXPE_LUT_APPROX)
+
 gen_packed: $(TARGET_GEN_PACKED)
 	./$(TARGET_GEN_PACKED)
 
 rne_sweep: $(TARGET_RNE_SWEEP)
 	./$(TARGET_RNE_SWEEP)
+
+# Generate the full expe LUT header, then build & run the ULP verification test.
+gen_expe_lut: $(TARGET_GEN_EXPE_LUT)
+	./$(TARGET_GEN_EXPE_LUT)
+
+expe_lut_test: gen_expe_lut $(TARGET_EXPE_LUT_TEST)
+	./$(TARGET_EXPE_LUT_TEST)
 
 run_linear_approx: $(TARGET_LINEAR_APPROX)
 	./$(TARGET_LINEAR_APPROX)
@@ -128,3 +154,37 @@ rtl_axi_test:
 	    --exe tests/rtl_axi_stream_test.cpp $(VER_CFLAGS)
 	make -j -C obj_dir_axi -f Vbf16_exp2.mk Vbf16_exp2
 	./obj_dir_axi/Vbf16_exp2
+
+# =========================================================================
+# RTL Verification -- full LUT exp(x) model (bf16_expe_lut)
+# =========================================================================
+LUT_TB       = tests/rtl_expe_lut_compliance_test.cpp
+LUT_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
+                --top-module bf16_expe_lut --cc
+LUT_RTL_SRC  = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_decompose.sv \
+               $(RTL_DIR)/bf16_early_out.sv \
+               $(RTL_DIR)/bf16_expe_lut_rom.sv \
+               $(RTL_DIR)/bf16_expe_lut.sv
+
+.PHONY: gen_expe_lut_rom rtl_expe_lut_verify rtl_expe_lut_verify_pipelined
+
+gen_expe_lut_rom:
+	@echo "Generating bf16_expe_lut_rom.sv from LUT table ..."
+	$(CXX) $(CXXFLAGS) -Isrc/approximations tests/gen_bf16_expe_lut_rom.cpp \
+	    -o $(BUILD_DIR)/gen_expe_lut_rom
+	./$(BUILD_DIR)/gen_expe_lut_rom
+
+rtl_expe_lut_verify:
+	@echo "Building combinational LUT RTL (REGISTER_STAGES=0) ..."
+	$(VERILATOR) $(LUT_VER_FLAGS) -Mdir obj_dir_lut $(VER_INC) $(LUT_RTL_SRC) \
+	    --exe $(LUT_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_lut -f Vbf16_expe_lut.mk Vbf16_expe_lut
+	./obj_dir_lut/Vbf16_expe_lut
+
+rtl_expe_lut_verify_pipelined:
+	@echo "Building pipelined LUT RTL (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(LUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_lut_pl $(VER_INC) $(LUT_RTL_SRC) \
+	    --exe $(LUT_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_lut_pl -f Vbf16_expe_lut.mk Vbf16_expe_lut
+	./obj_dir_lut_pl/Vbf16_expe_lut --latency 4
