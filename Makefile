@@ -188,3 +188,45 @@ rtl_expe_lut_verify_pipelined:
 	    --exe $(LUT_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_lut_pl -f Vbf16_expe_lut.mk Vbf16_expe_lut
 	./obj_dir_lut_pl/Vbf16_expe_lut --latency 4
+
+# =========================================================================
+# Hybrid compressed-table exp(x): sparse thresholds + dense ROM
+# =========================================================================
+HYBRID_TB = tests/rtl_expe_hybrid_compliance_test.cpp
+HYBRID_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
+                   --top-module bf16_expe_hybrid --cc
+HYBRID_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
+                 $(RTL_DIR)/bf16_decompose.sv \
+                 $(RTL_DIR)/bf16_early_out.sv \
+                 $(RTL_DIR)/bf16_expe_sparse_decode.sv \
+                 $(RTL_DIR)/bf16_expe_hybrid_rom.sv \
+                 $(RTL_DIR)/bf16_expe_hybrid.sv
+
+.PHONY: gen_expe_hybrid_tables expe_hybrid_test \
+        rtl_expe_hybrid_verify rtl_expe_hybrid_verify_pipelined
+
+gen_expe_hybrid_tables:
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) tests/gen_bf16_expe_hybrid_tables.cpp \
+	    -o $(BUILD_DIR)/gen_bf16_expe_hybrid_tables
+	./$(BUILD_DIR)/gen_bf16_expe_hybrid_tables
+
+expe_hybrid_test:
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) tests/bf16_expe_hybrid_test.cpp \
+	    -o $(BUILD_DIR)/bf16_expe_hybrid_test
+	./$(BUILD_DIR)/bf16_expe_hybrid_test
+
+rtl_expe_hybrid_verify:
+	@echo "Building combinational hybrid RTL (REGISTER_STAGES=0) ..."
+	$(VERILATOR) $(HYBRID_VER_FLAGS) -Mdir obj_dir_hybrid $(VER_INC) $(HYBRID_RTL_SRC) \
+	    --exe $(HYBRID_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_hybrid -f Vbf16_expe_hybrid.mk Vbf16_expe_hybrid
+	./obj_dir_hybrid/Vbf16_expe_hybrid
+
+rtl_expe_hybrid_verify_pipelined:
+	@echo "Building pipelined hybrid RTL (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(HYBRID_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_hybrid_pl \
+	    $(VER_INC) $(HYBRID_RTL_SRC) --exe $(HYBRID_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_hybrid_pl -f Vbf16_expe_hybrid.mk Vbf16_expe_hybrid
+	./obj_dir_hybrid_pl/Vbf16_expe_hybrid --latency 4
