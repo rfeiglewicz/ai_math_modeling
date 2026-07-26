@@ -230,3 +230,72 @@ rtl_expe_hybrid_verify_pipelined:
 	    $(VER_INC) $(HYBRID_RTL_SRC) --exe $(HYBRID_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_hybrid_pl -f Vbf16_expe_hybrid.mk Vbf16_expe_hybrid
 	./obj_dir_hybrid_pl/Vbf16_expe_hybrid --latency 4
+
+# =========================================================================
+# Cut-point ladder exp(x): shared 2^-f ladder + candidate ROM
+# =========================================================================
+.PHONY: gen_expe_cut_tables expe_cut_test gen_expe_cut_approx
+
+gen_expe_cut_tables:
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 tests/gen_bf16_expe_cut_tables.cpp \
+	    -o $(BUILD_DIR)/gen_bf16_expe_cut_tables
+	./$(BUILD_DIR)/gen_bf16_expe_cut_tables
+
+expe_cut_test: gen_expe_cut_tables
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 tests/bf16_expe_cut_test.cpp \
+	    -o $(BUILD_DIR)/bf16_expe_cut_test
+	./$(BUILD_DIR)/bf16_expe_cut_test
+
+# Emit the golden-reference output of the cut-ladder and hybrid models,
+# so ulp_error_analysis can score and cross-check them.
+gen_expe_cut_approx: gen_expe_cut_tables
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 tests/gen_bf16_expe_cut_approx.cpp \
+	    -o $(BUILD_DIR)/gen_bf16_expe_cut_approx
+	./$(BUILD_DIR)/gen_bf16_expe_cut_approx
+
+# Full comparison: regenerate every model's output, then score all of them.
+.PHONY: ulp_compare
+ulp_compare: gen_expe_lut_approx gen_expe_cut_approx $(TARGET_ULP_ANALYSIS)
+	./$(TARGET_ULP_ANALYSIS)
+
+# -------------------------------------------------------------------------
+# RTL verification of the cut-point ladder
+# -------------------------------------------------------------------------
+CUT_TB = tests/rtl_expe_cut_compliance_test.cpp
+CUT_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
+                --top-module bf16_expe_cut --cc
+CUT_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
+              $(RTL_DIR)/bf16_decompose.sv \
+              $(RTL_DIR)/bf16_early_out.sv \
+              $(RTL_DIR)/bf16_expe_cut_rom.sv \
+              $(RTL_DIR)/bf16_expe_cut.sv
+
+.PHONY: rtl_expe_cut_verify rtl_expe_cut_verify_pipelined rtl_expe_cut_all
+
+rtl_expe_cut_verify: gen_expe_cut_tables
+	@echo "Building combinational cut-ladder RTL (REGISTER_STAGES=0) ..."
+	$(VERILATOR) $(CUT_VER_FLAGS) -Mdir obj_dir_cut $(VER_INC) $(CUT_RTL_SRC) \
+	    --exe $(CUT_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_cut -f Vbf16_expe_cut.mk Vbf16_expe_cut
+	./obj_dir_cut/Vbf16_expe_cut
+
+rtl_expe_cut_verify_pipelined: gen_expe_cut_tables
+	@echo "Building pipelined cut-ladder RTL (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(CUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_cut_pl \
+	    $(VER_INC) $(CUT_RTL_SRC) --exe $(CUT_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_cut_pl -f Vbf16_expe_cut.mk Vbf16_expe_cut
+	./obj_dir_cut_pl/Vbf16_expe_cut --latency 4
+
+rtl_expe_cut_all: rtl_expe_cut_verify rtl_expe_cut_verify_pipelined rtl_expe_cut_axi_test
+
+.PHONY: rtl_expe_cut_axi_test
+
+rtl_expe_cut_axi_test: gen_expe_cut_tables
+	@echo "Building cut-ladder AXI-Stream protocol test (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(CUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_cut_axi \
+	    $(VER_INC) $(CUT_RTL_SRC) --exe tests/rtl_expe_cut_axi_test.cpp $(VER_CFLAGS)
+	make -j -C obj_dir_cut_axi -f Vbf16_expe_cut.mk Vbf16_expe_cut
+	./obj_dir_cut_axi/Vbf16_expe_cut
