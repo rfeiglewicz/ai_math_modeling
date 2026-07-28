@@ -258,7 +258,8 @@ gen_expe_cut_approx: gen_expe_cut_tables
 
 # Full comparison: regenerate every model's output, then score all of them.
 .PHONY: ulp_compare
-ulp_compare: gen_expe_lut_approx gen_expe_cut_approx $(TARGET_ULP_ANALYSIS)
+ulp_compare: gen_expe_lut_approx gen_expe_cut_approx gen_expe_poly4_approx \
+             $(TARGET_ULP_ANALYSIS)
 	./$(TARGET_ULP_ANALYSIS)
 
 # -------------------------------------------------------------------------
@@ -299,3 +300,121 @@ rtl_expe_cut_axi_test: gen_expe_cut_tables
 	    $(VER_INC) $(CUT_RTL_SRC) --exe tests/rtl_expe_cut_axi_test.cpp $(VER_CFLAGS)
 	make -j -C obj_dir_cut_axi -f Vbf16_expe_cut.mk Vbf16_expe_cut
 	./obj_dir_cut_axi/Vbf16_expe_cut
+
+# =========================================================================
+# Degree-4 minimax/Horner exp(x): DSP-heavy, storage-light counterpart of
+# the cut-point ladder.  157 table bits, 4 DSP slices.
+# =========================================================================
+.PHONY: gen_expe_poly4_tables expe_poly4_test gen_expe_poly4_approx
+
+gen_expe_poly4_tables:
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 tests/gen_bf16_expe_poly4_tables.cpp \
+	    -o $(BUILD_DIR)/gen_bf16_expe_poly4_tables
+	./$(BUILD_DIR)/gen_bf16_expe_poly4_tables
+
+expe_poly4_test: gen_expe_poly4_tables gen_expe_cut_tables
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 tests/bf16_expe_poly4_test.cpp \
+	    -o $(BUILD_DIR)/bf16_expe_poly4_test
+	./$(BUILD_DIR)/bf16_expe_poly4_test
+
+# Golden-reference output of the degree-4 model, for ulp_error_analysis.
+gen_expe_poly4_approx: gen_expe_poly4_tables
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 tests/gen_bf16_expe_poly4_approx.cpp \
+	    -o $(BUILD_DIR)/gen_bf16_expe_poly4_approx
+	./$(BUILD_DIR)/gen_bf16_expe_poly4_approx
+
+# -------------------------------------------------------------------------
+# RTL verification of the degree-4 Horner variant
+# -------------------------------------------------------------------------
+POLY4_TB = tests/rtl_expe_poly4_compliance_test.cpp
+POLY4_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
+                  --top-module bf16_expe_poly4 --cc
+POLY4_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
+                $(RTL_DIR)/bf16_decompose.sv \
+                $(RTL_DIR)/bf16_early_out.sv \
+                $(RTL_DIR)/bf16_expe_poly4_rom.sv \
+                $(RTL_DIR)/bf16_expe_poly4.sv
+
+.PHONY: rtl_expe_poly4_verify rtl_expe_poly4_verify_pipelined \
+        rtl_expe_poly4_axi_test rtl_expe_poly4_all
+
+rtl_expe_poly4_verify: gen_expe_poly4_tables
+	@echo "Building combinational degree-4 RTL (REGISTER_STAGES=0) ..."
+	$(VERILATOR) $(POLY4_VER_FLAGS) -Mdir obj_dir_poly4 $(VER_INC) \
+	    $(POLY4_RTL_SRC) --exe $(POLY4_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_poly4 -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
+	./obj_dir_poly4/Vbf16_expe_poly4
+
+rtl_expe_poly4_verify_pipelined: gen_expe_poly4_tables
+	@echo "Building pipelined degree-4 RTL (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(POLY4_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_poly4_pl \
+	    $(VER_INC) $(POLY4_RTL_SRC) --exe $(POLY4_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_poly4_pl -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
+	./obj_dir_poly4_pl/Vbf16_expe_poly4 --latency 7
+
+rtl_expe_poly4_axi_test: gen_expe_poly4_tables
+	@echo "Building degree-4 AXI-Stream protocol test (REGISTER_STAGES=1) ..."
+	$(VERILATOR) $(POLY4_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_poly4_axi \
+	    $(VER_INC) $(POLY4_RTL_SRC) --exe tests/rtl_expe_poly4_axi_test.cpp \
+	    $(VER_CFLAGS)
+	make -j -C obj_dir_poly4_axi -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
+	./obj_dir_poly4_axi/Vbf16_expe_poly4
+
+# -------------------------------------------------------------------------
+# DSP front-end variant: the barrel shifter and the CSD constant multiply are
+# replaced by three more DSP slices (7 DSP total).  Bit-identical output, one
+# extra pipeline stage.
+# -------------------------------------------------------------------------
+.PHONY: rtl_expe_poly4_dsp_verify rtl_expe_poly4_dsp_verify_pipelined \
+        rtl_expe_poly4_dsp_axi_test rtl_expe_poly4_dsp_all
+
+rtl_expe_poly4_dsp_verify: gen_expe_poly4_tables
+	@echo "Building combinational DSP front-end (DSP_FRONTEND=1) ..."
+	$(VERILATOR) $(POLY4_VER_FLAGS) -GDSP_FRONTEND=1 -Mdir obj_dir_poly4_dsp \
+	    $(VER_INC) $(POLY4_RTL_SRC) --exe $(POLY4_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_poly4_dsp -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
+	./obj_dir_poly4_dsp/Vbf16_expe_poly4
+
+rtl_expe_poly4_dsp_verify_pipelined: gen_expe_poly4_tables
+	@echo "Building pipelined DSP front-end (DSP_FRONTEND=1, latency 8) ..."
+	$(VERILATOR) $(POLY4_VER_FLAGS) -GREGISTER_STAGES=1 -GDSP_FRONTEND=1 \
+	    -Mdir obj_dir_poly4_dsp_pl $(VER_INC) $(POLY4_RTL_SRC) \
+	    --exe $(POLY4_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_poly4_dsp_pl -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
+	./obj_dir_poly4_dsp_pl/Vbf16_expe_poly4 --latency 8
+
+rtl_expe_poly4_dsp_axi_test: gen_expe_poly4_tables
+	@echo "Building DSP front-end AXI-Stream protocol test ..."
+	$(VERILATOR) $(POLY4_VER_FLAGS) -GREGISTER_STAGES=1 -GDSP_FRONTEND=1 \
+	    -Mdir obj_dir_poly4_dsp_axi $(VER_INC) $(POLY4_RTL_SRC) \
+	    --exe tests/rtl_expe_poly4_axi_test.cpp $(VER_CFLAGS)
+	make -j -C obj_dir_poly4_dsp_axi -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
+	./obj_dir_poly4_dsp_axi/Vbf16_expe_poly4
+
+rtl_expe_poly4_dsp_all: rtl_expe_poly4_dsp_verify \
+                        rtl_expe_poly4_dsp_verify_pipelined \
+                        rtl_expe_poly4_dsp_axi_test
+
+# -------------------------------------------------------------------------
+# Vivado synthesis.  VIVADO can be overridden if it is not on PATH.
+# -------------------------------------------------------------------------
+VIVADO ?= $(HOME)/AMD/2025.2/Vivado/bin/vivado
+
+.PHONY: synth_expe_poly4_dsp sweep_expe_poly4
+
+synth_expe_poly4_dsp: gen_expe_poly4_tables
+	$(VIVADO) -mode batch -nojournal -nolog \
+	    -source scripts/synth_expe_poly4_dsp.tcl
+
+# Synthesizes all four front-end / reset combinations and prints the
+# comparison table that backs the resource numbers in the docs.
+sweep_expe_poly4: gen_expe_poly4_tables
+	$(VIVADO) -mode batch -nojournal -nolog \
+	    -source scripts/sweep_poly4_configs.tcl
+
+rtl_expe_poly4_all: rtl_expe_poly4_verify rtl_expe_poly4_verify_pipelined \
+                    rtl_expe_poly4_axi_test rtl_expe_poly4_dsp_all
+

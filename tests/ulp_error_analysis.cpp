@@ -213,7 +213,7 @@ void compare_models(const std::string& reference_name, const std::string& refere
 }
 
 int main() {
-    std::vector<AnalysisResult> results(5);
+    std::vector<AnalysisResult> results(6);
 
     // Analyze exp2 (Base 2)
     analyze_file("modeling/golden_ref/bf16_exp2_approx_out.txt",
@@ -239,6 +239,11 @@ int main() {
     analyze_file("modeling/golden_ref/bf16_expe_cut_approx_out.txt",
                  "modeling/golden_ref/bf16_expe_cut_ulp.txt", false,
                  &results[4], "expe cut ladder");
+
+    // Analyze expe DEGREE-4 HORNER model (DSP-heavy, storage-light).
+    analyze_file("modeling/golden_ref/bf16_expe_poly4_approx_out.txt",
+                 "modeling/golden_ref/bf16_expe_poly4_ulp.txt", false,
+                 &results[5], "expe degree-4 Horner");
 
     // ---------------------------------------------------------------------
     // Side-by-side ULP summary
@@ -277,8 +282,14 @@ int main() {
                    "hybrid", "modeling/golden_ref/bf16_expe_hybrid_approx_out.txt");
     compare_models("full LUT", lut_file,
                    "cut ladder", "modeling/golden_ref/bf16_expe_cut_approx_out.txt");
+    compare_models("full LUT", lut_file,
+                   "degree-4 Horner",
+                   "modeling/golden_ref/bf16_expe_poly4_approx_out.txt");
     compare_models("hybrid", "modeling/golden_ref/bf16_expe_hybrid_approx_out.txt",
                    "cut ladder", "modeling/golden_ref/bf16_expe_cut_approx_out.txt");
+    compare_models("cut ladder", "modeling/golden_ref/bf16_expe_cut_approx_out.txt",
+                   "degree-4 Horner",
+                   "modeling/golden_ref/bf16_expe_poly4_approx_out.txt");
     compare_models("full LUT", lut_file,
                    "linear approx", "modeling/golden_ref/bf16_expe_approx_out.txt");
 
