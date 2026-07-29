@@ -25,7 +25,8 @@ module bf16_log2e_mult
     parameter int LOG2E_F   = LOG2E_F_DEFAULT,    // 22
     parameter int LOG2E_VAL = LOG2E_VAL_DEFAULT,  // 0x5c551d
     parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 29 = no rounding
-    parameter bit REGISTER_OUTPUT = 1'b0
+    parameter bit REGISTER_OUTPUT = 1'b0,
+    parameter bit RESET_DATAPATH  = 1'b1
 )(
     input  logic                                   clk,
     input  logic                                   rst_n,
@@ -105,10 +106,14 @@ module bf16_log2e_mult
     end
 
     generate
-        if (REGISTER_OUTPUT) begin : gen_reg
+        if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n)      mant_out <= '0;
                 else if (pipe_en) mant_out <= mant_out_comb;
+            end
+        end else if (REGISTER_OUTPUT) begin : gen_reg_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) mant_out <= mant_out_comb;
             end
         end else begin : gen_comb
             assign mant_out = mant_out_comb;

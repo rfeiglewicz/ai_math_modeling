@@ -23,7 +23,14 @@ module bf16_linear_approx
 #(
     parameter int COEFF_W         = COEFF_W_DEFAULT,  // 21
     parameter int COEFF_F         = COEFF_F_DEFAULT,  // 20
-    parameter bit REGISTER_OUTPUT = 1'b0
+    parameter bit REGISTER_OUTPUT = 1'b0,
+    parameter bit RESET_DATAPATH  = 1'b1,
+    // Number of LOW bits of frac_part that are guaranteed to be zero.
+    // Set from MANT_MULT_ROUND_FRAC at the top level: rounding the log2(e)
+    // product to 2.F leaves (29-F) zero LSBs, and the unified shift is a pure
+    // LEFT shift, so those zeros survive into frac_part unchanged.
+    // Narrowing the multiplier by this amount is exact, not an approximation.
+    parameter int FRAC_ZERO_LSBS  = 0
 )(
     input  logic              clk,
     input  logic              rst_n,
@@ -80,10 +87,14 @@ module bf16_linear_approx
     logic [IN_F-1:0] frac_aligned;
 
     generate
-        if (REGISTER_OUTPUT) begin : gen_frac_delay
+        if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_frac_delay
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n)      frac_aligned <= '0;
                 else if (pipe_en) frac_aligned <= frac_part;
+            end
+        end else if (REGISTER_OUTPUT) begin : gen_frac_delay_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) frac_aligned <= frac_part;
             end
         end else begin : gen_frac_wire
             assign frac_aligned = frac_part;
@@ -97,14 +108,27 @@ module bf16_linear_approx
     // x    : 1.37 unsigned  (IN_F=38)
     // a*x  : 2.57 unsigned  (ACTUAL_MULT_W=59)
     // b aligned to CALC_W=62 at bit CALC_F=58 : b << B_SHIFT(38)
+    //
+    // The low FRAC_ZERO_LSBS bits of x are known to be zero, so
+    //     a * x = a * (x_hi << FRAC_ZERO_LSBS) = (a * x_hi) << FRAC_ZERO_LSBS
+    // and the multiplier only needs the upper MULT_X_W bits. This removes whole
+    // DSP48 slices and the fabric adders that merge them.
     // -------------------------------------------------------------------------
+    localparam int MULT_X_W    = IN_F - FRAC_ZERO_LSBS;      // 38 or 30
+    localparam int CORE_MULT_W = COEFF_W + MULT_X_W;         // 59 or 51
+
+    logic [MULT_X_W-1:0]      frac_hi;
+    logic [CORE_MULT_W-1:0]   ax_core;
     logic [ACTUAL_MULT_W-1:0] ax_unsigned;
     logic signed [CALC_W-1:0] neg_ax;
     logic signed [CALC_W-1:0] b_aligned;
     logic signed [CALC_W-1:0] calc_res;
 
+    assign frac_hi = frac_aligned[IN_F-1 : FRAC_ZERO_LSBS];
+
     always_comb begin
-        ax_unsigned = coeff_a_w * frac_aligned;
+        ax_core     = coeff_a_w * frac_hi;
+        ax_unsigned = ACTUAL_MULT_W'(ax_core) << FRAC_ZERO_LSBS;
         neg_ax      = -signed'({1'b0, ax_unsigned});
         b_aligned   = signed'({1'b0, CALC_W'({coeff_b_w, {B_SHIFT{1'b0}}})});
         calc_res    = b_aligned + neg_ax;

@@ -19,7 +19,8 @@
 module bf16_normalize
     import bf16_exp2_pkg::*;
 #(
-    parameter bit REGISTER_OUTPUT = 1'b0
+    parameter bit REGISTER_OUTPUT = 1'b0,
+    parameter bit RESET_DATAPATH  = 1'b1
 )(
     input  logic                      clk,
     input  logic                      rst_n,
@@ -57,12 +58,19 @@ module bf16_normalize
     end
 
     generate
-        if (REGISTER_OUTPUT) begin : gen_reg
+        if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n) begin
                     normalized_mant <= '0;
                     poly_exponent   <= '0;
                 end else if (pipe_en) begin
+                    normalized_mant <= poly_mant_comb;
+                    poly_exponent   <= poly_exp_comb;
+                end
+            end
+        end else if (REGISTER_OUTPUT) begin : gen_reg_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
                     normalized_mant <= poly_mant_comb;
                     poly_exponent   <= poly_exp_comb;
                 end

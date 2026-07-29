@@ -21,7 +21,8 @@
 module bf16_round
     import bf16_exp2_pkg::*;
 #(
-    parameter bit REGISTER_OUTPUT = 1'b0
+    parameter bit REGISTER_OUTPUT = 1'b0,
+    parameter bit RESET_DATAPATH  = 1'b1
 )(
     input  logic                                clk,
     input  logic                                rst_n,
@@ -131,10 +132,14 @@ module bf16_round
     end
 
     generate
-        if (REGISTER_OUTPUT) begin : gen_reg
+        if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n)      rounded_fp <= '0;
                 else if (pipe_en) rounded_fp <= rounded_comb;
+            end
+        end else if (REGISTER_OUTPUT) begin : gen_reg_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) rounded_fp <= rounded_comb;
             end
         end else begin : gen_comb
             assign rounded_fp = rounded_comb;

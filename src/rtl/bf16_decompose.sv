@@ -7,7 +7,11 @@
 module bf16_decompose
     import bf16_exp2_pkg::*;
 #(
-    parameter bit REGISTER_OUTPUT = 1'b0
+    parameter bit REGISTER_OUTPUT = 1'b0,
+    // 1 = asynchronous reset on the output register
+    // 0 = no reset (value is only qualified by the valid shift register in the
+    //     top level, which IS reset) -- lets the FF merge into dedicated blocks
+    parameter bit RESET_DATAPATH  = 1'b1
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -59,10 +63,14 @@ module bf16_decompose
     assign decomposed_comb.status     = status_comb;
 
     generate
-        if (REGISTER_OUTPUT) begin : gen_reg
+        if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_reg
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n)      decomposed <= '0;
                 else if (pipe_en) decomposed <= decomposed_comb;
+            end
+        end else if (REGISTER_OUTPUT) begin : gen_reg_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) decomposed <= decomposed_comb;
             end
         end else begin : gen_comb
             assign decomposed = decomposed_comb;

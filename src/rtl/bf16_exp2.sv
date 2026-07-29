@@ -36,7 +36,15 @@ module bf16_exp2
     parameter int LOG2E_VAL  = LOG2E_VAL_DEFAULT,
     parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // RNE rounding after log2e mult (29=full)
     parameter int COEFF_W    = COEFF_W_DEFAULT,
-    parameter int COEFF_F    = COEFF_F_DEFAULT
+    parameter int COEFF_F    = COEFF_F_DEFAULT,
+    // 0 = fabric barrel shifter, 1 = one-hot multiply on DSP48 (bit-exact)
+    parameter bit DSP_SHIFT  = 1'b0,
+    // 1 = asynchronous reset on datapath registers.
+    // 0 = datapath registers have no reset. This is safe because the output is
+    //     only presented when m_axis_tvalid is high, and that comes from vld_sr
+    //     which IS reset -- stale datapath values are always flagged invalid.
+    //     Dropping the reset lets Vivado absorb registers into DSP48/BRAM.
+    parameter bit RESET_DATAPATH = 1'b1
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -109,7 +117,8 @@ module bf16_exp2
     fp_raw_t s1_decomposed;
 
     bf16_decompose #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .RESET_DATAPATH (RESET_DATAPATH)
     ) u_decompose (
         .clk       (clk),
         .rst_n     (rst_n),
@@ -148,12 +157,19 @@ module bf16_exp2
     logic signed [IN_CONV_INT_W-1:0] s6_int_part;
 
     generate
-        if (REGISTER_STAGES) begin : gen_align_regs
+        if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_align_regs
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n) begin
                     s3_base2    <= 1'b1;
                     s4_exponent <= '0;
                 end else if (pipe_en) begin
+                    s3_base2    <= base2;
+                    s4_exponent <= s1_decomposed.exponent;
+                end
+            end
+        end else if (REGISTER_STAGES) begin : gen_align_regs_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
                     s3_base2    <= base2;
                     s4_exponent <= s1_decomposed.exponent;
                 end
@@ -177,7 +193,8 @@ module bf16_exp2
         .LOG2E_F              (LOG2E_F),
         .LOG2E_VAL            (LOG2E_VAL),
         .MANT_MULT_ROUND_FRAC(MANT_MULT_ROUND_FRAC),
-        .REGISTER_OUTPUT      (REGISTER_STAGES)
+        .REGISTER_OUTPUT      (REGISTER_STAGES),
+        .RESET_DATAPATH       (RESET_DATAPATH)
     ) u_log2e_mult (
         .clk      (clk),
         .rst_n    (rst_n),
@@ -194,7 +211,9 @@ module bf16_exp2
     logic signed [IN_CONV_INT_W-1:0]     s4_int_part;
 
     bf16_unified_shift #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .DSP_SHIFT      (DSP_SHIFT),
+        .RESET_DATAPATH (RESET_DATAPATH)
     ) u_unified_shift (
         .clk      (clk),
         .rst_n    (rst_n),
@@ -213,7 +232,9 @@ module bf16_exp2
     bf16_linear_approx #(
         .COEFF_W         (COEFF_W),
         .COEFF_F         (COEFF_F),
-        .REGISTER_OUTPUT (REGISTER_STAGES)
+        .REGISTER_OUTPUT (REGISTER_STAGES),
+        .RESET_DATAPATH  (RESET_DATAPATH),
+        .FRAC_ZERO_LSBS  (MANT_MULT_F - MANT_MULT_ROUND_FRAC)
     ) u_lin_approx (
         .clk             (clk),
         .rst_n           (rst_n),
@@ -229,7 +250,8 @@ module bf16_exp2
     logic signed [8:0]     s6_poly_exp;
 
     bf16_normalize #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .RESET_DATAPATH (RESET_DATAPATH)
     ) u_normalize (
         .clk             (clk),
         .rst_n           (rst_n),
@@ -244,12 +266,19 @@ module bf16_exp2
     // Pipeline adds registers in stages 5 and 6, so we need 2 extra FFs.
     // =========================================================================
     generate
-        if (REGISTER_STAGES) begin : gen_int_delay
+        if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_int_delay
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n) begin
                     s5_int_part <= '0;
                     s6_int_part <= '0;
                 end else if (pipe_en) begin
+                    s5_int_part <= s4_int_part;
+                    s6_int_part <= s5_int_part;
+                end
+            end
+        end else if (REGISTER_STAGES) begin : gen_int_delay_nrst
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
                     s5_int_part <= s4_int_part;
                     s6_int_part <= s5_int_part;
                 end
@@ -266,7 +295,8 @@ module bf16_exp2
     fp_raw_t s7_rounded_fp;
 
     bf16_round #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .RESET_DATAPATH (RESET_DATAPATH)
     ) u_round (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -329,7 +359,8 @@ module bf16_exp2
     logic [15:0] bf16_out;
 
     bf16_recompose #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .RESET_DATAPATH (RESET_DATAPATH)
     ) u_recompose (
         .clk       (clk),
         .rst_n     (rst_n),

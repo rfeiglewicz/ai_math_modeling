@@ -155,6 +155,90 @@ rtl_axi_test:
 	make -j -C obj_dir_axi -f Vbf16_exp2.mk Vbf16_exp2
 	./obj_dir_axi/Vbf16_exp2
 
+# -------------------------------------------------------------------------
+# Same design with the fabric barrel shifter replaced by a one-hot DSP
+# multiply (bf16_unified_shift DSP_SHIFT=1). Must be bit-exact.
+# -------------------------------------------------------------------------
+.PHONY: rtl_dsp_shift_verify rtl_dsp_shift_verify_pipelined \
+        rtl_dsp_shift_axi_test rtl_dsp_shift_all
+
+rtl_dsp_shift_verify:
+	@echo "Building combinational RTL (DSP_SHIFT=1) ..."
+	$(VERILATOR) $(VER_FLAGS) -GDSP_SHIFT=1 -Mdir obj_dir_dsps $(VER_INC) $(RTL_SRC) \
+	    --exe $(RTL_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_dsps -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_dsps/Vbf16_exp2
+
+rtl_dsp_shift_verify_pipelined:
+	@echo "Building pipelined RTL (REGISTER_STAGES=1 DSP_SHIFT=1) ..."
+	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -GDSP_SHIFT=1 -Mdir obj_dir_dsps_pl \
+	    $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_dsps_pl -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_dsps_pl/Vbf16_exp2 --latency 6
+
+rtl_dsp_shift_axi_test:
+	@echo "Building AXI-Stream protocol test (REGISTER_STAGES=1 DSP_SHIFT=1) ..."
+	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -GDSP_SHIFT=1 -Mdir obj_dir_dsps_axi \
+	    $(VER_INC) $(RTL_SRC) --exe tests/rtl_axi_stream_test.cpp $(VER_CFLAGS)
+	make -j -C obj_dir_dsps_axi -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_dsps_axi/Vbf16_exp2
+
+rtl_dsp_shift_all: rtl_dsp_shift_verify rtl_dsp_shift_verify_pipelined rtl_dsp_shift_axi_test
+
+# -------------------------------------------------------------------------
+# Sweep MANT_MULT_ROUND_FRAC through the RTL (not just the C++ model) to find
+# the narrowest log2(e) product that is still bit-exact against the golden
+# model. Usage:  make rtl_round_frac_sweep [FRAC_LIST="23 22 21 20"]
+# -------------------------------------------------------------------------
+FRAC_LIST ?= 29 25 23 22 21 20 19
+.PHONY: rtl_round_frac_sweep
+
+rtl_round_frac_sweep:
+	@for F in $(FRAC_LIST); do \
+	    $(VERILATOR) $(VER_FLAGS) -GDSP_SHIFT=1 -GMANT_MULT_ROUND_FRAC=$$F \
+	        -Mdir obj_dir_rf $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS) \
+	        > /dev/null 2>&1 ; \
+	    make -j -s -C obj_dir_rf -f Vbf16_exp2.mk Vbf16_exp2 > /dev/null 2>&1 ; \
+	    printf 'MANT_MULT_ROUND_FRAC=%-3s ' $$F ; \
+	    ./obj_dir_rf/Vbf16_exp2 2>&1 | grep -E '^\[|OVERALL' | tr '\n' ' ' ; \
+	    echo ; \
+	    rm -rf obj_dir_rf ; \
+	done
+
+# -------------------------------------------------------------------------
+# Fully optimised bf16_exp2: DSP one-hot shifter + narrowed log2(e) product
+# + no reset on datapath registers. Must stay bit-exact.
+# -------------------------------------------------------------------------
+OPT_GENERICS = -GDSP_SHIFT=1 -GMANT_MULT_ROUND_FRAC=21 -GRESET_DATAPATH=0
+.PHONY: rtl_opt_verify rtl_opt_verify_pipelined rtl_opt_axi_test rtl_opt_all
+
+rtl_opt_verify:
+	@echo "Building combinational RTL (optimised) ..."
+	$(VERILATOR) $(VER_FLAGS) $(OPT_GENERICS) -Mdir obj_dir_opt $(VER_INC) $(RTL_SRC) \
+	    --exe $(RTL_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_opt -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_opt/Vbf16_exp2
+
+rtl_opt_verify_pipelined:
+	@echo "Building pipelined RTL (optimised) ..."
+	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 $(OPT_GENERICS) -Mdir obj_dir_opt_pl \
+	    $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_opt_pl -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_opt_pl/Vbf16_exp2 --latency 6
+
+rtl_opt_axi_test:
+	@echo "Building AXI-Stream protocol test (optimised) ..."
+	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 $(OPT_GENERICS) -Mdir obj_dir_opt_axi \
+	    $(VER_INC) $(RTL_SRC) --exe tests/rtl_axi_stream_test.cpp $(VER_CFLAGS)
+	make -j -C obj_dir_opt_axi -f Vbf16_exp2.mk Vbf16_exp2
+	./obj_dir_opt_axi/Vbf16_exp2
+
+rtl_opt_all: rtl_opt_verify rtl_opt_verify_pipelined rtl_opt_axi_test
+
+.PHONY: sweep_exp2
+sweep_exp2:
+	$(VIVADO) -mode batch -nojournal -nolog -source scripts/sweep_exp2_configs.tcl
+
 # =========================================================================
 # RTL Verification -- full LUT exp(x) model (bf16_expe_lut)
 # =========================================================================
