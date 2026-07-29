@@ -57,7 +57,7 @@ static void clock_tick(Vbf16_exp2* dut) {
 // Returns the number of mismatches found.
 // ---------------------------------------------------------------------------
 static uint64_t run_test(Vbf16_exp2* dut, bool base2_mode,
-                         uint64_t& out_total, uint64_t& out_nan_skipped) {
+                         uint64_t& out_total, uint64_t& out_nan_checked) {
     // Reset DUT
     dut->clk   = 0;
     dut->rst_n = 0;
@@ -74,7 +74,7 @@ static uint64_t run_test(Vbf16_exp2* dut, bool base2_mode,
 
     uint64_t errors      = 0;
     uint64_t total       = 0;
-    uint64_t nan_skipped = 0;
+    uint64_t nan_checked = 0;
 
     const char* mode_str = base2_mode ? "base2 (2^x)" : "base_e (e^x)";
     std::cout << "\n--- Testing mode: " << mode_str << " ---" << std::endl;
@@ -85,9 +85,13 @@ static uint64_t run_test(Vbf16_exp2* dut, bool base2_mode,
             uint16_t got = dut->m_axis_tdata;
             total++;
 
-            if (is_nan_bf16(te.expected) && is_nan_bf16(got)) {
-                nan_skipped++;
-            } else if (got != te.expected) {
+            if (is_nan_bf16(te.expected)) {
+                // NaN results are compared bit for bit like everything else.
+                // The cores emit a fixed qNaN (0xFFC0); the input payload is
+                // deliberately NOT propagated, so this must match exactly.
+                nan_checked++;
+            }
+            if (got != te.expected) {
                 errors++;
                 if (errors <= 20) {
                     std::cout << "  MISMATCH input=0x" << std::hex
@@ -129,7 +133,7 @@ static uint64_t run_test(Vbf16_exp2* dut, bool base2_mode,
     }
 
     out_total       = total;
-    out_nan_skipped = nan_skipped;
+    out_nan_checked = nan_checked;
     return errors;
 }
 
@@ -160,12 +164,12 @@ int main(int argc, char** argv) {
     std::cout << "\n=== Summary ===" << std::endl;
 
     std::cout << "[base2 2^x]  checked=" << total2
-              << "  nan_skipped=" << nan2
+              << "  nan_checked=" << nan2
               << "  errors=" << errorsBase2
               << "  " << (errorsBase2 == 0 ? "PASS" : "FAIL") << std::endl;
 
     std::cout << "[base_e e^x] checked=" << totale
-              << "  nan_skipped=" << nane
+              << "  nan_checked=" << nane
               << "  errors=" << errorsBaseE
               << "  " << (errorsBaseE == 0 ? "PASS" : "FAIL") << std::endl;
 

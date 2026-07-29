@@ -96,6 +96,31 @@ package bf16_exp2_pkg;
     localparam int IN_CONV_INT_W    = INPUT_MAX_EXP + MANT_MULT_I;   // 9
 
     // =========================================================================
+    // Canonical early-out results.
+    //
+    // Every core must emit EXACTLY these patterns so that all implementations
+    // are bit-identical for the whole 65536-value input space and can be
+    // swapped for one another without touching anything downstream.
+    //
+    // BF16_QNAN is a fixed quiet NaN: the input NaN payload is NOT propagated.
+    // Propagating it would make the result depend on the input mantissa, which
+    // the table-based cores cannot reproduce without extra storage.
+    // =========================================================================
+    localparam logic [15:0] BF16_QNAN      = 16'hFFC0;
+    localparam logic [15:0] BF16_PLUS_ONE  = 16'h3F80;
+    localparam logic [15:0] BF16_PLUS_ZERO = 16'h0000;
+
+    // =========================================================================
+    // Common pipeline depth.
+    //
+    // The natural depths differ per core (4 for the table cores, 7 for exp2 and
+    // poly4, 8 for poly4 with the DSP front end). Every core pads its output to
+    // UNIFIED_PIPE_DEPTH so that latency and AXI-Stream timing are identical.
+    // Set PIPE_TARGET=0 on a core to get its natural (unpadded) depth back.
+    // =========================================================================
+    localparam int UNIFIED_PIPE_DEPTH = 8;
+
+    // =========================================================================
     // Decomposed BF16 status flags
     // =========================================================================
     typedef struct packed {

@@ -93,7 +93,8 @@ struct Expected {
 static int g_test_errors = 0;
 
 static bool compare(uint16_t expected, uint16_t got, uint16_t input, const char* test) {
-    if (is_nan_bf16(expected) && is_nan_bf16(got)) return true;
+    // NaN is compared bit for bit like any other value: the cores emit a fixed
+    // qNaN (0xFFC0) and never propagate the input NaN payload.
     if (got == expected) return true;
     g_test_errors++;
     if (g_test_errors <= 30) {
@@ -270,8 +271,7 @@ static bool test_stall_hold(Vbf16_exp2* dut) {
         TickResult t = axi_tick(dut);
         if (t.output_consumed) {
             // First valid output - now check it
-            bool first_ok = (t.output_data == expected) ||
-                            (is_nan_bf16(expected) && is_nan_bf16(t.output_data));
+            bool first_ok = (t.output_data == expected);
             if (!first_ok) {
                 std::cout << "  Initial output mismatch: exp=0x" << std::hex
                           << expected << " got=0x" << t.output_data << std::dec << std::endl;
@@ -490,7 +490,7 @@ static bool test_full_sweep_backpressure(Vbf16_exp2* dut) {
     SweepMaster master;
     master.count = 65536;
     std::deque<Expected> q;
-    uint64_t received = 0, nan_skip = 0;
+    uint64_t received = 0, nan_checked = 0;
 
     for (int cycle = 0; cycle < 65536 * 6; cycle++) {
         master.try_load_next();
@@ -501,9 +501,10 @@ static bool test_full_sweep_backpressure(Vbf16_exp2* dut) {
 
         if (t.output_consumed && !q.empty()) {
             Expected& e = q.front();
-            if (is_nan_bf16(e.expected) && is_nan_bf16(t.output_data)) {
-                nan_skip++;
-            } else if (t.output_data != e.expected) {
+            if (is_nan_bf16(e.expected)) {
+                nan_checked++;
+            }
+            if (t.output_data != e.expected) {
                 g_test_errors++;
                 if (g_test_errors <= 10) {
                     std::cout << "  MISMATCH in=0x" << std::hex
@@ -523,7 +524,7 @@ static bool test_full_sweep_backpressure(Vbf16_exp2* dut) {
 
     bool pass = (received == 65536) && (g_test_errors == 0);
     std::cout << "  sent=" << master.next_idx << " received=" << received
-              << " nan_skip=" << nan_skip << " mismatch=" << g_test_errors
+              << " nan_checked=" << nan_checked << " mismatch=" << g_test_errors
               << "  " << (pass ? "PASS" : "FAIL") << std::endl;
     return pass;
 }

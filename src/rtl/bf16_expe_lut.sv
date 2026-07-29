@@ -32,7 +32,10 @@
 module bf16_expe_lut
     import bf16_exp2_pkg::*;
 #(
-    parameter bit REGISTER_STAGES = 1'b0   // Enable per-stage registers
+    parameter bit REGISTER_STAGES = 1'b0,  // Enable per-stage registers
+    // Pad the output to this many pipeline stages so every core has the same
+    // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
+    parameter int PIPE_TARGET     = UNIFIED_PIPE_DEPTH
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -56,16 +59,18 @@ module bf16_expe_lut
     localparam int LUT_ADDR_WIDTH  = 12;                        // $clog2(2176)
     localparam int EXP_IDX_W        = 5;                        // (exp+9) in [0,16]
 
-    // Early-out constant BF16 payloads
-    localparam logic [15:0] BF16_QNAN      = 16'hFFC0;
-    localparam logic [15:0] BF16_PLUS_ONE  = 16'h3F80;
-    localparam logic [15:0] BF16_PLUS_ZERO = 16'h0000;
+    // Early-out constant BF16 payloads come from bf16_exp2_pkg so that every
+    // core emits byte-identical results.
 
     // =========================================================================
     // Pipeline depth: 4 register stages when REGISTER_STAGES=1.
     //   decompose | early_out+addr | ROM read | output mux
+    // Padded up to PIPE_TARGET so all cores share one latency.
     // =========================================================================
-    localparam int PIPE_DEPTH = REGISTER_STAGES ? 4 : 0;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? 4 : 0;
+    localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
+                                ? PIPE_TARGET - CORE_DEPTH : 0;
+    localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
 
     // =========================================================================
     // AXI-Stream handshake & pipeline enable ("all-stall" approach)
@@ -202,15 +207,26 @@ module bf16_expe_lut
         endcase
     end
 
+    logic [15:0] core_data;
+
     generate
         if (REGISTER_STAGES) begin : gen_out_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n)       m_axis_tdata <= 16'h0000;
-                else if (pipe_en) m_axis_tdata <= bf16_out_comb;
+                if (!rst_n)       core_data <= 16'h0000;
+                else if (pipe_en) core_data <= bf16_out_comb;
             end
         end else begin : gen_out_wire
-            assign m_axis_tdata = bf16_out_comb;
+            assign core_data = bf16_out_comb;
         end
     endgenerate
+
+    // Latency padding so this core matches the deepest implementation.
+    bf16_pipe_pad #(
+        .STAGES(PAD_STAGES),
+        .WIDTH (16)
+    ) u_pipe_pad (
+        .clk(clk), .rst_n(rst_n), .pipe_en(pipe_en),
+        .d(core_data), .q(m_axis_tdata)
+    );
 
 endmodule : bf16_expe_lut

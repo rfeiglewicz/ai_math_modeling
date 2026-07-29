@@ -1054,6 +1054,17 @@ VL_ATTR_COLD void Vbf16_expe_hybrid___024root___stl_sequent__TOP__0(Vbf16_expe_h
     SData/*9:0*/ __Vtableidx1;
     __Vtableidx1 = 0;
     // Body
+    vlSelf->m_axis_tdata = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [3U];
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt 
+        = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [0U];
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt 
+        = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [1U];
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt 
+        = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [2U];
     vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb 
         = (((IData)(((0x7f80U == (0x7f80U & (IData)(vlSelf->s_axis_tdata))) 
                      & (0U != (0x7fU & (IData)(vlSelf->s_axis_tdata))))) 
@@ -1075,7 +1086,7 @@ VL_ATTR_COLD void Vbf16_expe_hybrid___024root___stl_sequent__TOP__0(Vbf16_expe_h
         = Vbf16_expe_hybrid__ConstPool__TABLE_hf7ff168e_0
         [__Vtableidx1];
     vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr) 
-                                   >> 3U));
+                                   >> 7U));
     vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__hidden_bit_comb 
         = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb)))))) 
            && (1U & (~ ((IData)(vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb) 
@@ -1185,13 +1196,20 @@ VL_ATTR_COLD void Vbf16_expe_hybrid___024root___ctor_var_reset(Vbf16_expe_hybrid
     vlSelf->bf16_expe_hybrid__DOT__s3_dense_data = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_hybrid__DOT__s3_eo_code = VL_RAND_RESET_I(2);
     vlSelf->bf16_expe_hybrid__DOT__s3_route = VL_RAND_RESET_I(2);
-    vlSelf->bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr = VL_RAND_RESET_I(4);
+    vlSelf->bf16_expe_hybrid__DOT__core_data = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr = VL_RAND_RESET_I(8);
     vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb = VL_RAND_RESET_I(4);
     vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__hidden_bit_comb = VL_RAND_RESET_I(1);
     vlSelf->bf16_expe_hybrid__DOT__u_sparse__DOT__data_comb = VL_RAND_RESET_I(16);
     for (int __Vi0 = 0; __Vi0 < 1024; ++__Vi0) {
         vlSelf->bf16_expe_hybrid__DOT__u_dense_rom__DOT__rom[__Vi0] = VL_RAND_RESET_I(16);
     }
+    for (int __Vi0 = 0; __Vi0 < 4; ++__Vi0) {
+        vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[__Vi0] = VL_RAND_RESET_I(16);
+    }
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->__Vtrigprevexpr___TOP__clk__0 = VL_RAND_RESET_I(1);
     vlSelf->__Vtrigprevexpr___TOP__rst_n__0 = VL_RAND_RESET_I(1);
 }

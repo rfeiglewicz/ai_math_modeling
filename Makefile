@@ -121,6 +121,7 @@ VER_INC    = -I$(RTL_DIR)
 VER_CFLAGS = -CFLAGS "-I../src/utils -I../src/approximations \
              -I../$(AC_TYPES_DIR)/include -I../modeling/coeff_gen"
 RTL_SRC    = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_pipe_pad.sv \
              $(RTL_DIR)/bf16_decompose.sv \
              $(RTL_DIR)/bf16_recompose.sv \
              $(RTL_DIR)/bf16_early_out.sv \
@@ -146,7 +147,7 @@ rtl_verify_pipelined:
 	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_pl $(VER_INC) $(RTL_SRC) \
 	    --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_pl -f Vbf16_exp2.mk Vbf16_exp2
-	./obj_dir_pl/Vbf16_exp2 --latency 6
+	./obj_dir_pl/Vbf16_exp2 --latency 8
 
 rtl_axi_test:
 	@echo "Building AXI-Stream protocol test (REGISTER_STAGES=1) ..."
@@ -174,7 +175,7 @@ rtl_dsp_shift_verify_pipelined:
 	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -GDSP_SHIFT=1 -Mdir obj_dir_dsps_pl \
 	    $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_dsps_pl -f Vbf16_exp2.mk Vbf16_exp2
-	./obj_dir_dsps_pl/Vbf16_exp2 --latency 6
+	./obj_dir_dsps_pl/Vbf16_exp2 --latency 8
 
 rtl_dsp_shift_axi_test:
 	@echo "Building AXI-Stream protocol test (REGISTER_STAGES=1 DSP_SHIFT=1) ..."
@@ -224,7 +225,7 @@ rtl_opt_verify_pipelined:
 	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 $(OPT_GENERICS) -Mdir obj_dir_opt_pl \
 	    $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_opt_pl -f Vbf16_exp2.mk Vbf16_exp2
-	./obj_dir_opt_pl/Vbf16_exp2 --latency 6
+	./obj_dir_opt_pl/Vbf16_exp2 --latency 8
 
 rtl_opt_axi_test:
 	@echo "Building AXI-Stream protocol test (optimised) ..."
@@ -273,12 +274,54 @@ compare_cores_verify:
 compare_all: compare_cores_verify ulp_compare compare_cores
 
 # =========================================================================
+# Rownowaznosc wszystkich implementacji (drop-in replacement)
+#
+# Wszystkie rdzenie sterowane jednym strumieniem wejsciowym, porownywane
+# cykl po cyklu: dane, tvalid, tready oraz zmierzona latencja.
+# NaN NIE sa pomijane - musza byc bit w bit identyczne.
+# =========================================================================
+EQUIV_TOP    = tests/bf16_expe_equiv_top.sv
+EQUIV_TB     = tests/rtl_expe_equivalence_test.cpp
+EQUIV_SRC    = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_pipe_pad.sv \
+               $(RTL_DIR)/bf16_decompose.sv \
+               $(RTL_DIR)/bf16_recompose.sv \
+               $(RTL_DIR)/bf16_early_out.sv \
+               $(RTL_DIR)/bf16_log2e_mult.sv \
+               $(RTL_DIR)/bf16_unified_shift.sv \
+               $(RTL_DIR)/bf16_coeff_rom.sv \
+               $(RTL_DIR)/bf16_linear_approx.sv \
+               $(RTL_DIR)/bf16_normalize.sv \
+               $(RTL_DIR)/bf16_round.sv \
+               $(RTL_DIR)/bf16_exp2.sv \
+               $(RTL_DIR)/bf16_expe_lut_rom.sv \
+               $(RTL_DIR)/bf16_expe_lut.sv \
+               $(RTL_DIR)/bf16_expe_sparse_decode.sv \
+               $(RTL_DIR)/bf16_expe_hybrid_rom.sv \
+               $(RTL_DIR)/bf16_expe_hybrid.sv \
+               $(RTL_DIR)/bf16_expe_cut_rom.sv \
+               $(RTL_DIR)/bf16_expe_cut.sv \
+               $(RTL_DIR)/bf16_expe_poly4_rom.sv \
+               $(RTL_DIR)/bf16_expe_poly4.sv \
+               $(EQUIV_TOP)
+
+.PHONY: rtl_equivalence_test
+rtl_equivalence_test: gen_expe_lut_rom gen_expe_hybrid_tables gen_expe_cut_tables gen_expe_poly4_tables
+	@echo "Building cross-implementation equivalence test ..."
+	$(VERILATOR) -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
+	    --top-module bf16_expe_equiv_top --cc -Mdir obj_dir_equiv \
+	    $(VER_INC) $(EQUIV_SRC) --exe ../$(EQUIV_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_equiv -f Vbf16_expe_equiv_top.mk Vbf16_expe_equiv_top
+	./obj_dir_equiv/Vbf16_expe_equiv_top
+
+# =========================================================================
 # RTL Verification -- full LUT exp(x) model (bf16_expe_lut)
 # =========================================================================
 LUT_TB       = tests/rtl_expe_lut_compliance_test.cpp
 LUT_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
                 --top-module bf16_expe_lut --cc
 LUT_RTL_SRC  = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_pipe_pad.sv \
                $(RTL_DIR)/bf16_decompose.sv \
                $(RTL_DIR)/bf16_early_out.sv \
                $(RTL_DIR)/bf16_expe_lut_rom.sv \
@@ -304,7 +347,7 @@ rtl_expe_lut_verify_pipelined:
 	$(VERILATOR) $(LUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_lut_pl $(VER_INC) $(LUT_RTL_SRC) \
 	    --exe $(LUT_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_lut_pl -f Vbf16_expe_lut.mk Vbf16_expe_lut
-	./obj_dir_lut_pl/Vbf16_expe_lut --latency 4
+	./obj_dir_lut_pl/Vbf16_expe_lut --latency 8
 
 # =========================================================================
 # Hybrid compressed-table exp(x): sparse thresholds + dense ROM
@@ -313,6 +356,7 @@ HYBRID_TB = tests/rtl_expe_hybrid_compliance_test.cpp
 HYBRID_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
                    --top-module bf16_expe_hybrid --cc
 HYBRID_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_pipe_pad.sv \
                  $(RTL_DIR)/bf16_decompose.sv \
                  $(RTL_DIR)/bf16_early_out.sv \
                  $(RTL_DIR)/bf16_expe_sparse_decode.sv \
@@ -346,7 +390,7 @@ rtl_expe_hybrid_verify_pipelined:
 	$(VERILATOR) $(HYBRID_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_hybrid_pl \
 	    $(VER_INC) $(HYBRID_RTL_SRC) --exe $(HYBRID_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_hybrid_pl -f Vbf16_expe_hybrid.mk Vbf16_expe_hybrid
-	./obj_dir_hybrid_pl/Vbf16_expe_hybrid --latency 4
+	./obj_dir_hybrid_pl/Vbf16_expe_hybrid --latency 8
 
 # =========================================================================
 # Cut-point ladder exp(x): shared 2^-f ladder + candidate ROM
@@ -386,6 +430,7 @@ CUT_TB = tests/rtl_expe_cut_compliance_test.cpp
 CUT_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
                 --top-module bf16_expe_cut --cc
 CUT_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_pipe_pad.sv \
               $(RTL_DIR)/bf16_decompose.sv \
               $(RTL_DIR)/bf16_early_out.sv \
               $(RTL_DIR)/bf16_expe_cut_rom.sv \
@@ -405,7 +450,7 @@ rtl_expe_cut_verify_pipelined: gen_expe_cut_tables
 	$(VERILATOR) $(CUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_cut_pl \
 	    $(VER_INC) $(CUT_RTL_SRC) --exe $(CUT_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_cut_pl -f Vbf16_expe_cut.mk Vbf16_expe_cut
-	./obj_dir_cut_pl/Vbf16_expe_cut --latency 4
+	./obj_dir_cut_pl/Vbf16_expe_cut --latency 8
 
 rtl_expe_cut_all: rtl_expe_cut_verify rtl_expe_cut_verify_pipelined rtl_expe_cut_axi_test
 
@@ -450,6 +495,7 @@ POLY4_TB = tests/rtl_expe_poly4_compliance_test.cpp
 POLY4_VER_FLAGS = -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-SELRANGE -Wno-LATCH \
                   --top-module bf16_expe_poly4 --cc
 POLY4_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
+               $(RTL_DIR)/bf16_pipe_pad.sv \
                 $(RTL_DIR)/bf16_decompose.sv \
                 $(RTL_DIR)/bf16_early_out.sv \
                 $(RTL_DIR)/bf16_expe_poly4_rom.sv \
@@ -470,7 +516,7 @@ rtl_expe_poly4_verify_pipelined: gen_expe_poly4_tables
 	$(VERILATOR) $(POLY4_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_poly4_pl \
 	    $(VER_INC) $(POLY4_RTL_SRC) --exe $(POLY4_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_poly4_pl -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
-	./obj_dir_poly4_pl/Vbf16_expe_poly4 --latency 7
+	./obj_dir_poly4_pl/Vbf16_expe_poly4 --latency 8
 
 rtl_expe_poly4_axi_test: gen_expe_poly4_tables
 	@echo "Building degree-4 AXI-Stream protocol test (REGISTER_STAGES=1) ..."

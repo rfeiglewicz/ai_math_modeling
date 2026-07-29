@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
-| Date         : Wed Jul 29 18:23:28 2026
+| Date         : Wed Jul 29 18:56:50 2026
 | Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
 | Command      : report_utilization -hierarchical -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/util_expe_cut-ladder_hier.rpt
 | Design       : bf16_expe_cut
@@ -22,10 +22,10 @@ Table of Contents
 +-------------------+------------------------+------------+------------+---------+------+-----+--------+--------+------------+
 |      Instance     |         Module         | Total LUTs | Logic LUTs | LUTRAMs | SRLs | FFs | RAMB36 | RAMB18 | DSP Blocks |
 +-------------------+------------------------+------------+------------+---------+------+-----+--------+--------+------------+
-| bf16_expe_cut     |                  (top) |        225 |        225 |       0 |    0 | 110 |      0 |      0 |          1 |
-|   (bf16_expe_cut) |                  (top) |          0 |          0 |       0 |    0 |  78 |      0 |      0 |          1 |
-|   u_cand_rom      | bf16_expe_cut_cand_rom |        106 |        106 |       0 |    0 |   4 |      0 |      0 |          0 |
-|   u_decompose     |         bf16_decompose |        115 |        115 |       0 |    0 |  19 |      0 |      0 |          0 |
+| bf16_expe_cut     |                  (top) |        251 |        234 |       0 |   17 | 131 |      0 |      0 |          1 |
+|   (bf16_expe_cut) |                  (top) |          2 |          1 |       0 |    1 |  67 |      0 |      0 |          1 |
+|   u_cand_rom      | bf16_expe_cut_cand_rom |         97 |         97 |       0 |    0 |   4 |      0 |      0 |          0 |
+|   u_decompose     |         bf16_decompose |        114 |        114 |       0 |    0 |  19 |      0 |      0 |          0 |
 +-------------------+------------------------+------------+------------+---------+------+-----+--------+--------+------------+
 
 

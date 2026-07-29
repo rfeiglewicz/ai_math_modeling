@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
-| Date         : Wed Jul 29 18:22:15 2026
+| Date         : Wed Jul 29 18:55:34 2026
 | Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
 | Command      : report_utilization -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/util_exp2_optimised.rpt
 | Design       : bf16_exp2
@@ -36,8 +36,8 @@ Table of Contents
 |   LUT as Memory            |   11 |     0 |          0 |     46200 |  0.02 |
 |     LUT as Distributed RAM |    0 |     0 |            |           |       |
 |     LUT as Shift Register  |   11 |     0 |            |           |       |
-| Slice Registers            |  153 |     0 |          0 |    269200 |  0.06 |
-|   Register as Flip Flop    |  153 |     0 |          0 |    269200 |  0.06 |
+| Slice Registers            |  170 |     0 |          0 |    269200 |  0.06 |
+|   Register as Flip Flop    |  170 |     0 |          0 |    269200 |  0.06 |
 |   Register as Latch        |    0 |     0 |          0 |    269200 |  0.00 |
 | F7 Muxes                   |    1 |     0 |          0 |     67300 | <0.01 |
 | F8 Muxes                   |    0 |     0 |          0 |     33650 |  0.00 |
@@ -62,9 +62,9 @@ Warning! For any ECO changes, please run place_design if there are unplaced inst
 | 0     |            _ |       Reset |            - |
 | 0     |          Yes |           - |            - |
 | 5     |          Yes |           - |          Set |
-| 8     |          Yes |           - |        Reset |
+| 9     |          Yes |           - |        Reset |
 | 10    |          Yes |         Set |            - |
-| 130   |          Yes |       Reset |            - |
+| 146   |          Yes |       Reset |            - |
 +-------+--------------+-------------+--------------+
 
 
@@ -159,8 +159,8 @@ Warning! For any ECO changes, please run place_design if there are unplaced inst
 | Ref Name | Used | Functional Category |
 +----------+------+---------------------+
 | LUT6     |  263 |                 LUT |
+| FDRE     |  146 |        Flop & Latch |
 | LUT5     |  136 |                 LUT |
-| FDRE     |  130 |        Flop & Latch |
 | LUT2     |   88 |                 LUT |
 | LUT4     |   68 |                 LUT |
 | LUT3     |   46 |                 LUT |
@@ -170,7 +170,7 @@ Warning! For any ECO changes, please run place_design if there are unplaced inst
 | OBUF     |   18 |                  IO |
 | SRL16E   |   11 |  Distributed Memory |
 | FDSE     |   10 |        Flop & Latch |
-| FDCE     |    8 |        Flop & Latch |
+| FDCE     |    9 |        Flop & Latch |
 | FDPE     |    5 |        Flop & Latch |
 | DSP48E1  |    5 |    Block Arithmetic |
 | RAMB18E1 |    2 |        Block Memory |

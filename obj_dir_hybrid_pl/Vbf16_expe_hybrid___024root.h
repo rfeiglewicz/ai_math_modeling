@@ -26,7 +26,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_hybrid___024root final : public Ve
     CData/*6:0*/ bf16_expe_hybrid__DOT__s2_mantissa;
     CData/*1:0*/ bf16_expe_hybrid__DOT__s3_eo_code;
     CData/*1:0*/ bf16_expe_hybrid__DOT__s3_route;
-    CData/*3:0*/ bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr;
+    CData/*7:0*/ bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr;
     CData/*3:0*/ bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb;
     CData/*0:0*/ bf16_expe_hybrid__DOT__u_decompose__DOT__hidden_bit_comb;
     CData/*0:0*/ __VstlFirstIteration;
@@ -39,10 +39,15 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_hybrid___024root final : public Ve
     SData/*9:0*/ bf16_expe_hybrid__DOT__s2_dense_addr;
     SData/*15:0*/ bf16_expe_hybrid__DOT__s3_sparse_data;
     SData/*15:0*/ bf16_expe_hybrid__DOT__s3_dense_data;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__core_data;
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_sparse__DOT__data_comb;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
     IData/*21:0*/ bf16_expe_hybrid__DOT__s1_decomposed;
     IData/*31:0*/ __VactIterCount;
     VlUnpacked<SData/*15:0*/, 1024> bf16_expe_hybrid__DOT__u_dense_rom__DOT__rom;
+    VlUnpacked<SData/*15:0*/, 4> bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;
     VlTriggerVec<2> __VactTriggered;

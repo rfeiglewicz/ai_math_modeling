@@ -30,7 +30,7 @@ file mkdir $out_dir
 # -----------------------------------------------------------------------------
 # Wspolne zestawy plikow
 # -----------------------------------------------------------------------------
-set common {bf16_exp2_pkg.sv bf16_decompose.sv bf16_early_out.sv}
+set common {bf16_exp2_pkg.sv bf16_pipe_pad.sv bf16_decompose.sv bf16_early_out.sv}
 
 set src_exp2  [concat $common {bf16_recompose.sv bf16_log2e_mult.sv \
                                bf16_unified_shift.sv bf16_coeff_rom.sv \
@@ -89,6 +89,10 @@ foreach v $variants {
     set dsp   [llength [get_cells -hierarchical -quiet -filter {REF_NAME == DSP48E1}]]
     set bram  [llength [get_cells -hierarchical -quiet -filter {REF_NAME =~ RAMB*}]]
 
+    # SRL16E sits in the LUT primitive group but is LUT-as-memory, not logic.
+    # Report it separately so pipeline padding does not look like extra logic.
+    set lut_logic [expr {$lut - $srl}]
+
     # Fmax z najgorszej sciezki wewnetrznej przy zadanym okresie.
     set fmax "n/a"
     set tp [get_timing_paths -quiet -max_paths 1 -nworst 1 -delay_type max]
@@ -103,7 +107,7 @@ foreach v $variants {
     report_utilization              -file $out_dir/util_${tag}.rpt
     report_utilization -hierarchical -file $out_dir/util_${tag}_hier.rpt
 
-    lappend results [list $label $lut $carry $ff $srl $dsp $bram $fmax]
+    lappend results [list $label $lut_logic $carry $ff $srl $dsp $bram $fmax]
 }
 
 # -----------------------------------------------------------------------------
@@ -114,12 +118,12 @@ puts "CORE_COMPARISON_BEGIN"
 puts "part   $part"
 puts "period ${period} ns"
 puts ""
-puts [format "%-16s %7s %7s %7s %6s %5s %6s %10s" \
-      core LUT CARRY FF SRL DSP BRAM Fmax_MHz]
-puts [string repeat "-" 72]
+puts [format "%-16s %9s %7s %7s %6s %5s %6s %10s" \
+      core LUT_logic CARRY FF SRL DSP BRAM Fmax_MHz]
+puts [string repeat "-" 74]
 foreach r $results {
     lassign $r label lut carry ff srl dsp bram fmax
-    puts [format "%-16s %7d %7d %7d %6d %5d %6d %10s" \
+    puts [format "%-16s %9d %7d %7d %6d %5d %6d %10s" \
           $label $lut $carry $ff $srl $dsp $bram $fmax]
 }
 if {[llength $failed] > 0} {

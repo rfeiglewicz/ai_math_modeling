@@ -24,7 +24,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_exp2___024root final : public Verilated
     CData/*1:0*/ bf16_exp2__DOT__s2_eo_code;
     CData/*0:0*/ bf16_exp2__DOT__s3_base2;
     CData/*7:0*/ bf16_exp2__DOT__s3_mant_src;
-    CData/*6:0*/ bf16_exp2__DOT__gen_axi_pipelined__DOT__vld_sr;
+    CData/*7:0*/ bf16_exp2__DOT__gen_axi_pipelined__DOT__vld_sr;
     CData/*3:0*/ bf16_exp2__DOT__u_decompose__DOT__status_comb;
     CData/*0:0*/ bf16_exp2__DOT__u_decompose__DOT__hidden_bit_comb;
     CData/*0:0*/ __VstlFirstIteration;
@@ -57,6 +57,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_exp2___024root final : public Verilated
     QData/*58:0*/ bf16_exp2__DOT__u_round__DOT__unnamedblk1__DOT__sticky_mask;
     VlUnpacked<CData/*1:0*/, 5> bf16_exp2__DOT__eo_delay;
     VlUnpacked<QData/*41:0*/, 128> bf16_exp2__DOT__u_lin_approx__DOT__u_coeff_rom__DOT__rom;
+    VlUnpacked<SData/*15:0*/, 1> bf16_exp2__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;
     VlTriggerVec<2> __VactTriggered;

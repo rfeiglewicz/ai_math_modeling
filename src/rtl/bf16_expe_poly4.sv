@@ -107,7 +107,10 @@ module bf16_expe_poly4
     // reset: DSP48E1 has no asynchronous reset, so turning it on forces Vivado
     // to gate every DSP input in fabric, at roughly one LUT per bit.  Control
     // state (valid shift register, output register) is always reset.
-    parameter bit RESET_DATAPATH   = 1'b0
+    parameter bit RESET_DATAPATH   = 1'b0,
+    // Pad the output to this many pipeline stages so every core has the same
+    // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
+    parameter int PIPE_TARGET      = UNIFIED_PIPE_DEPTH
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -123,7 +126,10 @@ module bf16_expe_poly4
     localparam int FE_EXTRA = (DSP_FRONTEND && REGISTER_STAGES) ? 1 : 0;
 
     // decompose + align + DEGREE Horner steps + output register
-    localparam int PIPE_DEPTH = REGISTER_STAGES ? (3 + FE_EXTRA + DEGREE) : 0;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? (3 + FE_EXTRA + DEGREE) : 0;
+    localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
+                                ? PIPE_TARGET - CORE_DEPTH : 0;
+    localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
 
     // Coefficient shifted from COEF_FRAC scale into the product scale, with the
     // rounding constant folded in.  This is the DSP C-port value.
@@ -521,9 +527,9 @@ module bf16_expe_poly4
     logic [15:0] result_comb;
     always_comb begin
         unique case (ctrl_eo[DEGREE])
-            EO_QNAN:      result_comb = 16'hFFC0;
-            EO_PLUS_ONE:  result_comb = 16'h3F80;
-            EO_PLUS_ZERO: result_comb = 16'h0000;
+            EO_QNAN:      result_comb = BF16_QNAN;
+            EO_PLUS_ONE:  result_comb = BF16_PLUS_ONE;
+            EO_PLUS_ZERO: result_comb = BF16_PLUS_ZERO;
             default: begin
                 unique case (ctrl_route[DEGREE])
                     ROUTE_POLY: result_comb = poly_result;
@@ -534,14 +540,26 @@ module bf16_expe_poly4
         endcase
     end
 
+    logic [15:0] core_data;
+
     generate
         if (REGISTER_STAGES) begin : gen_output_reg
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) m_axis_tdata <= 16'h0000;
-                else if (pipe_en) m_axis_tdata <= result_comb;
+                if (!rst_n) core_data <= 16'h0000;
+                else if (pipe_en) core_data <= result_comb;
             end
         end else begin : gen_output_wire
-            assign m_axis_tdata = result_comb;
+            assign core_data = result_comb;
         end
     endgenerate
+
+    // Latency padding so this core matches the deepest implementation.
+    bf16_pipe_pad #(
+        .STAGES        (PAD_STAGES),
+        .WIDTH         (16),
+        .RESET_DATAPATH(RESET_DATAPATH)
+    ) u_pipe_pad (
+        .clk(clk), .rst_n(rst_n), .pipe_en(pipe_en),
+        .d(core_data), .q(m_axis_tdata)
+    );
 endmodule : bf16_expe_poly4

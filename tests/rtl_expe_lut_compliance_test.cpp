@@ -43,7 +43,7 @@ static void clock_tick(Vbf16_expe_lut* dut) {
 }
 
 static uint64_t run_test(Vbf16_expe_lut* dut,
-                         uint64_t& out_total, uint64_t& out_nan_skipped) {
+                         uint64_t& out_total, uint64_t& out_nan_checked) {
     // Reset DUT
     dut->clk   = 0;
     dut->rst_n = 0;
@@ -60,7 +60,7 @@ static uint64_t run_test(Vbf16_expe_lut* dut,
 
     uint64_t errors      = 0;
     uint64_t total       = 0;
-    uint64_t nan_skipped = 0;
+    uint64_t nan_checked = 0;
 
     std::cout << "\n--- Testing bf16_expe_lut (e^x, full LUT) ---" << std::endl;
 
@@ -70,9 +70,12 @@ static uint64_t run_test(Vbf16_expe_lut* dut,
             uint16_t got = dut->m_axis_tdata;
             total++;
 
-            if (is_nan_bf16(te.expected) && is_nan_bf16(got)) {
-                nan_skipped++;
-            } else if (got != te.expected) {
+            if (is_nan_bf16(te.expected)) {
+                // Compared bit for bit: the core emits a fixed qNaN (0xFFC0)
+                // and does not propagate the input NaN payload.
+                nan_checked++;
+            }
+            if (got != te.expected) {
                 errors++;
                 if (errors <= 20) {
                     std::cout << "  MISMATCH input=0x" << std::hex
@@ -112,7 +115,7 @@ static uint64_t run_test(Vbf16_expe_lut* dut,
     }
 
     out_total       = total;
-    out_nan_skipped = nan_skipped;
+    out_nan_checked = nan_checked;
     return errors;
 }
 
@@ -136,7 +139,7 @@ int main(int argc, char** argv) {
 
     std::cout << "\n=== Summary ===" << std::endl;
     std::cout << "[e^x LUT]  checked=" << total
-              << "  nan_skipped=" << nan
+              << "  nan_checked=" << nan
               << "  errors=" << errors
               << "  " << (errors == 0 ? "PASS" : "FAIL") << std::endl;
 

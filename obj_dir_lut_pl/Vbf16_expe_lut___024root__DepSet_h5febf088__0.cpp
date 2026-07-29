@@ -77,18 +77,62 @@ VL_INLINE_OPT void Vbf16_expe_lut___024root___nba_sequent__TOP__0(Vbf16_expe_lut
     __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v0 = 0;
     CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v1;
     __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v1 = 0;
+    SData/*15:0*/ __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0;
+    __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 0;
+    SData/*15:0*/ __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2;
+    __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v3;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v3 = 0;
+    SData/*15:0*/ __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4;
+    __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v5;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v5 = 0;
+    SData/*15:0*/ __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6;
+    __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6 = 0;
+    CData/*0:0*/ __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v7;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v7 = 0;
     // Body
     __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v0 = 0U;
     __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v1 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v3 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v5 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v7 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 = 0U;
+    __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 0U;
     if (vlSelf->rst_n) {
         if (vlSelf->s_axis_tready) {
             vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr 
-                = ((0xeU & ((IData)(vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr) 
-                            << 1U)) | (IData)(vlSelf->s_axis_tvalid));
+                = ((0xfeU & ((IData)(vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr) 
+                             << 1U)) | (IData)(vlSelf->s_axis_tvalid));
             __Vdlyvval__bf16_expe_lut__DOT__eo_delay__v0 
                 = vlSelf->bf16_expe_lut__DOT__eo_delay
                 [0U];
             __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v0 = 1U;
+            __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 
+                = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+            __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 1U;
+            __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4 
+                = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
+            __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4 = 1U;
+            __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6 
+                = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
+            __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6 = 1U;
+            __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 
+                = vlSelf->bf16_expe_lut__DOT__core_data;
+            __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 = 1U;
             vlSelf->bf16_expe_lut__DOT__s2_eo_code 
                 = ((8U & vlSelf->bf16_expe_lut__DOT__s1_decomposed)
                     ? 3U : ((1U & vlSelf->bf16_expe_lut__DOT__s1_decomposed)
@@ -110,30 +154,72 @@ VL_INLINE_OPT void Vbf16_expe_lut___024root___nba_sequent__TOP__0(Vbf16_expe_lut
                                                ? 2U
                                                : 0U))
                                           : 1U))));
-            vlSelf->m_axis_tdata = ((3U == vlSelf->bf16_expe_lut__DOT__eo_delay
-                                     [1U]) ? 0xffc0U
-                                     : ((1U == vlSelf->bf16_expe_lut__DOT__eo_delay
-                                         [1U]) ? 0x3f80U
-                                         : ((2U == 
-                                             vlSelf->bf16_expe_lut__DOT__eo_delay
-                                             [1U]) ? 0U
-                                             : (IData)(vlSelf->bf16_expe_lut__DOT__s3_rom_data))));
+            vlSelf->bf16_expe_lut__DOT__core_data = 
+                ((3U == vlSelf->bf16_expe_lut__DOT__eo_delay
+                  [1U]) ? 0xffc0U : ((1U == vlSelf->bf16_expe_lut__DOT__eo_delay
+                                      [1U]) ? 0x3f80U
+                                      : ((2U == vlSelf->bf16_expe_lut__DOT__eo_delay
+                                          [1U]) ? 0U
+                                          : (IData)(vlSelf->bf16_expe_lut__DOT__s3_rom_data))));
         }
     } else {
         vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr = 0U;
         __Vdlyvset__bf16_expe_lut__DOT__eo_delay__v1 = 1U;
+        __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v3 = 1U;
+        __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v5 = 1U;
+        __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v7 = 1U;
+        __Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 1U;
         vlSelf->bf16_expe_lut__DOT__s2_eo_code = 1U;
-        vlSelf->m_axis_tdata = 0U;
+        vlSelf->bf16_expe_lut__DOT__core_data = 0U;
     }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[0U] 
+            = __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[0U] = 0U;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[1U] 
+            = __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v3) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[1U] = 0U;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[2U] 
+            = __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v4;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v5) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[2U] = 0U;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[3U] 
+            = __Vdlyvval__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v6;
+    }
+    if (__Vdlyvset__bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v7) {
+        vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[3U] = 0U;
+    }
+    vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr) 
+                                   >> 7U));
+    vlSelf->m_axis_tdata = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [3U];
+    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt 
+        = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [0U];
+    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt 
+        = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [1U];
+    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt 
+        = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [2U];
+    vlSelf->bf16_expe_lut__DOT__eo_delay[0U] = vlSelf->bf16_expe_lut__DOT__s2_eo_code;
     if (__Vdlyvset__bf16_expe_lut__DOT__eo_delay__v0) {
         vlSelf->bf16_expe_lut__DOT__eo_delay[1U] = __Vdlyvval__bf16_expe_lut__DOT__eo_delay__v0;
     }
     if (__Vdlyvset__bf16_expe_lut__DOT__eo_delay__v1) {
         vlSelf->bf16_expe_lut__DOT__eo_delay[1U] = 1U;
     }
-    vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr) 
-                                   >> 3U));
-    vlSelf->bf16_expe_lut__DOT__eo_delay[0U] = vlSelf->bf16_expe_lut__DOT__s2_eo_code;
 }
 
 VL_INLINE_OPT void Vbf16_expe_lut___024root___nba_sequent__TOP__1(Vbf16_expe_lut___024root* vlSelf) {

@@ -44,7 +44,10 @@ module bf16_exp2
     //     only presented when m_axis_tvalid is high, and that comes from vld_sr
     //     which IS reset -- stale datapath values are always flagged invalid.
     //     Dropping the reset lets Vivado absorb registers into DSP48/BRAM.
-    parameter bit RESET_DATAPATH = 1'b1
+    parameter bit RESET_DATAPATH = 1'b1,
+    // Pad the output to this many pipeline stages so every core has the same
+    // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
+    parameter int PIPE_TARGET = UNIFIED_PIPE_DEPTH
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -66,7 +69,10 @@ module bf16_exp2
     // Data path FFs: decompose, log2e_mult, unified_shift, BRAM(linear_approx),
     //                normalize, round, recompose.
     // =========================================================================
-    localparam int PIPE_DEPTH = REGISTER_STAGES ? 7 : 0;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? 7 : 0;
+    localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
+                                ? PIPE_TARGET - CORE_DEPTH : 0;
+    localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
 
     // =========================================================================
     // AXI-Stream handshake & pipeline enable
@@ -369,6 +375,14 @@ module bf16_exp2
         .bf16_out  (bf16_out)
     );
 
-    assign m_axis_tdata = bf16_out;
+    // Latency padding so this core matches the deepest implementation.
+    bf16_pipe_pad #(
+        .STAGES        (PAD_STAGES),
+        .WIDTH         (16),
+        .RESET_DATAPATH(RESET_DATAPATH)
+    ) u_pipe_pad (
+        .clk(clk), .rst_n(rst_n), .pipe_en(pipe_en),
+        .d(bf16_out), .q(m_axis_tdata)
+    );
 
 endmodule : bf16_exp2
