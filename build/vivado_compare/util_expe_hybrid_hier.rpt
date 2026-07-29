@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
-| Date         : Wed Jul 29 18:56:24 2026
+| Date         : Wed Jul 29 20:18:46 2026
 | Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
 | Command      : report_utilization -hierarchical -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/util_expe_hybrid_hier.rpt
 | Design       : bf16_expe_hybrid
@@ -22,9 +22,9 @@ Table of Contents
 +----------------------+-------------------------+------------+------------+---------+------+-----+--------+--------+------------+
 |       Instance       |          Module         | Total LUTs | Logic LUTs | LUTRAMs | SRLs | FFs | RAMB36 | RAMB18 | DSP Blocks |
 +----------------------+-------------------------+------------+------------+---------+------+-----+--------+--------+------------+
-| bf16_expe_hybrid     |                   (top) |        123 |        107 |       0 |   16 |  84 |      0 |      1 |          0 |
-|   (bf16_expe_hybrid) |                   (top) |          2 |          1 |       0 |    1 |  25 |      0 |      0 |          0 |
-|   u_sparse           | bf16_expe_sparse_decode |         60 |         60 |       0 |    0 |   8 |      0 |      0 |          0 |
+| bf16_expe_hybrid     |                   (top) |        107 |        107 |       0 |    0 |  64 |      0 |      1 |          0 |
+|   (bf16_expe_hybrid) |                   (top) |          0 |          0 |       0 |    0 |  35 |      0 |      0 |          0 |
+|   u_sparse           | bf16_expe_sparse_decode |         66 |         66 |       0 |    0 |   8 |      0 |      0 |          0 |
 +----------------------+-------------------------+------------+------------+---------+------+-----+--------+--------+------------+
 
 

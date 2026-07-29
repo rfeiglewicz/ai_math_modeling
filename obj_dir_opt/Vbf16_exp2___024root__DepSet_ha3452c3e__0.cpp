@@ -28,8 +28,6 @@ VL_INLINE_OPT void Vbf16_exp2___024root___ico_sequent__TOP__0(Vbf16_exp2___024ro
     bf16_exp2__DOT__u_unified_shift__DOT__unified_shifted = 0;
     QData/*41:0*/ bf16_exp2__DOT__u_lin_approx__DOT__packed_coeff;
     bf16_exp2__DOT__u_lin_approx__DOT__packed_coeff = 0;
-    QData/*50:0*/ bf16_exp2__DOT__u_lin_approx__DOT__ax_core;
-    bf16_exp2__DOT__u_lin_approx__DOT__ax_core = 0;
     QData/*58:0*/ bf16_exp2__DOT__u_lin_approx__DOT__ax_unsigned;
     bf16_exp2__DOT__u_lin_approx__DOT__ax_unsigned = 0;
     QData/*61:0*/ bf16_exp2__DOT__u_lin_approx__DOT__neg_ax;
@@ -58,10 +56,12 @@ VL_INLINE_OPT void Vbf16_exp2___024root___ico_sequent__TOP__0(Vbf16_exp2___024ro
     bf16_exp2__DOT__u_round__DOT__lsb_bit = 0;
     CData/*0:0*/ bf16_exp2__DOT__u_round__DOT__guard_bit;
     bf16_exp2__DOT__u_round__DOT__guard_bit = 0;
-    CData/*0:0*/ bf16_exp2__DOT__u_round__DOT__sticky_bit;
-    bf16_exp2__DOT__u_round__DOT__sticky_bit = 0;
     CData/*0:0*/ bf16_exp2__DOT__u_round__DOT__round_up;
     bf16_exp2__DOT__u_round__DOT__round_up = 0;
+    SData/*8:0*/ bf16_exp2__DOT__u_round__DOT__sum_m_ext;
+    bf16_exp2__DOT__u_round__DOT__sum_m_ext = 0;
+    QData/*58:0*/ bf16_exp2__DOT__u_round__DOT__sticky_masked;
+    bf16_exp2__DOT__u_round__DOT__sticky_masked = 0;
     SData/*8:0*/ bf16_exp2__DOT__u_round__DOT__result_m_ext;
     bf16_exp2__DOT__u_round__DOT__result_m_ext = 0;
     SData/*8:0*/ bf16_exp2__DOT__u_round__DOT__adjusted_exp;
@@ -197,17 +197,17 @@ VL_INLINE_OPT void Vbf16_exp2___024root___ico_sequent__TOP__0(Vbf16_exp2___024ro
         = vlSelf->bf16_exp2__DOT__u_lin_approx__DOT__u_coeff_rom__DOT__rom
         [(0x7fU & ((IData)(0x7fU) - (IData)((bf16_exp2__DOT__u_unified_shift__DOT__unified_shifted 
                                              >> 0x1fU))))];
-    bf16_exp2__DOT__u_lin_approx__DOT__ax_core = (0x7ffffffffffffULL 
-                                                  & ((QData)((IData)(
-                                                                     (0x1fffffU 
-                                                                      & (IData)(bf16_exp2__DOT__u_lin_approx__DOT__packed_coeff)))) 
-                                                     * (QData)((IData)(
-                                                                       (0x3fffffffU 
-                                                                        & (IData)(
-                                                                                (bf16_exp2__DOT__u_unified_shift__DOT__unified_shifted 
-                                                                                >> 8U)))))));
     bf16_exp2__DOT__u_lin_approx__DOT__ax_unsigned 
-        = (0x7ffffffffffffffULL & VL_SHIFTL_QQI(59,59,32, bf16_exp2__DOT__u_lin_approx__DOT__ax_core, 8U));
+        = (0x7ffffffffffffffULL & VL_SHIFTL_QQI(59,59,32, 
+                                                (0x7ffffffffffffULL 
+                                                 & ((QData)((IData)(
+                                                                    (0x1fffffU 
+                                                                     & (IData)(bf16_exp2__DOT__u_lin_approx__DOT__packed_coeff)))) 
+                                                    * (QData)((IData)(
+                                                                      (0x3fffffffU 
+                                                                       & (IData)(
+                                                                                (bf16_exp2__DOT__u_unified_shift__DOT__unified_shifted 
+                                                                                >> 8U))))))), 8U));
     bf16_exp2__DOT__u_lin_approx__DOT__neg_ax = (0x3fffffffffffffffULL 
                                                  & (- 
                                                     VL_EXTENDS_QQ(62,60, bf16_exp2__DOT__u_lin_approx__DOT__ax_unsigned)));
@@ -243,7 +243,6 @@ VL_INLINE_OPT void Vbf16_exp2___024root___ico_sequent__TOP__0(Vbf16_exp2___024ro
     bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb 
         = (0x7ffffffffffffffULL & (bf16_exp2__DOT__u_normalize__DOT__shifted_res 
                                    >> 3U));
-    bf16_exp2__DOT__u_round__DOT__sticky_bit = 0U;
     bf16_exp2__DOT__u_round__DOT__final_exponent = 
         (0x1ffU & (((IData)(bf16_exp2__DOT__u_normalize__DOT__msb_idx_comb) 
                     - (IData)(0x3aU)) + (- (IData)(
@@ -260,8 +259,154 @@ VL_INLINE_OPT void Vbf16_exp2___024root___ico_sequent__TOP__0(Vbf16_exp2___024ro
     } else {
         bf16_exp2__DOT__u_round__DOT__shift_9 = 0x33U;
         bf16_exp2__DOT__u_round__DOT__adjusted_exp 
-            = (0x1ffU & VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__final_exponent)));
+            = bf16_exp2__DOT__u_round__DOT__final_exponent;
     }
+    bf16_exp2__DOT__u_round__DOT__sticky_masked = (bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb 
+                                                   & (((QData)((IData)(
+                                                                       VL_LTS_III(9, 0x3bU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                       << 0x3aU) 
+                                                      | (((QData)((IData)(
+                                                                          VL_LTS_III(9, 0x3aU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                          << 0x39U) 
+                                                         | (((QData)((IData)(
+                                                                             VL_LTS_III(9, 0x39U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                             << 0x38U) 
+                                                            | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x38U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                << 0x37U) 
+                                                               | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x37U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                   << 0x36U) 
+                                                                  | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x36U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                      << 0x35U) 
+                                                                     | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x35U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                         << 0x34U) 
+                                                                        | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x34U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                            << 0x33U) 
+                                                                           | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x33U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                               << 0x32U) 
+                                                                              | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x32U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x31U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x31U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x30U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x30U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x2fU) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x2fU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x2eU) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x2eU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x2dU) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x2dU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x2cU) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x2cU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x2bU) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x2bU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x2aU) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x2aU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x29U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x29U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x28U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x28U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x27U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x27U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x26U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x26U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x25U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x25U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x24U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x24U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x23U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x23U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x22U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x22U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x21U) 
+                                                                                | (((QData)((IData)(
+                                                                                VL_LTS_III(9, 0x21U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
+                                                                                << 0x20U) 
+                                                                                | (QData)((IData)(
+                                                                                ((VL_LTS_III(9, 0x20U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x1fU) 
+                                                                                | ((VL_LTS_III(9, 0x1fU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x1eU) 
+                                                                                | ((VL_LTS_III(9, 0x1eU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x1dU) 
+                                                                                | ((VL_LTS_III(9, 0x1dU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x1cU) 
+                                                                                | ((VL_LTS_III(9, 0x1cU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x1bU) 
+                                                                                | ((VL_LTS_III(9, 0x1bU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x1aU) 
+                                                                                | ((VL_LTS_III(9, 0x1aU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x19U) 
+                                                                                | ((VL_LTS_III(9, 0x19U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x18U) 
+                                                                                | ((VL_LTS_III(9, 0x18U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x17U) 
+                                                                                | ((VL_LTS_III(9, 0x17U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x16U) 
+                                                                                | ((VL_LTS_III(9, 0x16U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x15U) 
+                                                                                | ((VL_LTS_III(9, 0x15U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x14U) 
+                                                                                | ((VL_LTS_III(9, 0x14U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x13U) 
+                                                                                | ((VL_LTS_III(9, 0x13U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x12U) 
+                                                                                | ((VL_LTS_III(9, 0x12U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x11U) 
+                                                                                | ((VL_LTS_III(9, 0x11U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0x10U) 
+                                                                                | ((VL_LTS_III(9, 0x10U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0xfU) 
+                                                                                | ((VL_LTS_III(9, 0xfU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0xeU) 
+                                                                                | ((VL_LTS_III(9, 0xeU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0xdU) 
+                                                                                | ((VL_LTS_III(9, 0xdU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0xcU) 
+                                                                                | ((VL_LTS_III(9, 0xcU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0xbU) 
+                                                                                | ((VL_LTS_III(9, 0xbU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 0xaU) 
+                                                                                | ((VL_LTS_III(9, 0xaU, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 9U) 
+                                                                                | ((VL_LTS_III(9, 9U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 8U) 
+                                                                                | ((VL_LTS_III(9, 8U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 7U) 
+                                                                                | ((VL_LTS_III(9, 7U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 6U) 
+                                                                                | ((VL_LTS_III(9, 6U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 5U) 
+                                                                                | ((VL_LTS_III(9, 5U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 4U) 
+                                                                                | ((VL_LTS_III(9, 4U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 3U) 
+                                                                                | ((VL_LTS_III(9, 3U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 2U) 
+                                                                                | ((VL_LTS_III(9, 2U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                                << 1U) 
+                                                                                | VL_LTS_III(9, 1U, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
     bf16_exp2__DOT__u_round__DOT__lsb_bit = (VL_GTS_III(32, 0x3bU, 
                                                         VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9))) 
                                              & ((0x3aU 
@@ -274,54 +419,40 @@ VL_INLINE_OPT void Vbf16_exp2___024root___ico_sequent__TOP__0(Vbf16_exp2___024ro
                                                                >> 
                                                                (0x3fU 
                                                                 & (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))))));
-    bf16_exp2__DOT__u_round__DOT__guard_bit = ((VL_LTS_III(32, 0U, 
-                                                           VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9))) 
-                                                & VL_GTES_III(32, 0x3bU, 
-                                                              VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) 
-                                               & ((0x3aU 
-                                                   >= 
-                                                   (0x3fU 
-                                                    & (VL_EXTENDS_II(6,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
-                                                       - (IData)(1U)))) 
-                                                  && (1U 
-                                                      & (IData)(
-                                                                (bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb 
-                                                                 >> 
-                                                                 (0x3fU 
-                                                                  & (VL_EXTENDS_II(6,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
-                                                                     - (IData)(1U))))))));
-    if (VL_LTS_III(32, 1U, VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) {
-        if (VL_LTES_III(32, 0x3bU, VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))) {
-            bf16_exp2__DOT__u_round__DOT__sticky_bit 
-                = (0U != bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb);
-        } else {
-            vlSelf->bf16_exp2__DOT__u_round__DOT__unnamedblk1__DOT__sticky_mask 
-                = (0x7ffffffffffffffULL & (VL_SHIFTL_QQI(59,59,32, 1ULL, 
-                                                         (VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
-                                                          - (IData)(1U))) 
-                                           - 1ULL));
-            bf16_exp2__DOT__u_round__DOT__sticky_bit 
-                = (0U != (bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb 
-                          & vlSelf->bf16_exp2__DOT__u_round__DOT__unnamedblk1__DOT__sticky_mask));
-        }
-    } else {
-        bf16_exp2__DOT__u_round__DOT__sticky_bit = 0U;
-    }
+    bf16_exp2__DOT__u_round__DOT__guard_bit = (VL_LTS_III(32, 0U, 
+                                                          VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9))) 
+                                               & (VL_GTES_III(32, 0x3bU, 
+                                                              VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9))) 
+                                                  & ((0x3aU 
+                                                      >= 
+                                                      (0x3fU 
+                                                       & (VL_EXTENDS_II(6,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                          - (IData)(1U)))) 
+                                                     && (1U 
+                                                         & (IData)(
+                                                                   (bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb 
+                                                                    >> 
+                                                                    (0x3fU 
+                                                                     & (VL_EXTENDS_II(6,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)) 
+                                                                        - (IData)(1U)))))))));
     bf16_exp2__DOT__u_round__DOT__round_up = ((IData)(bf16_exp2__DOT__u_round__DOT__guard_bit) 
                                               & ((IData)(bf16_exp2__DOT__u_round__DOT__lsb_bit) 
-                                                 | (IData)(bf16_exp2__DOT__u_round__DOT__sticky_bit)));
-    bf16_exp2__DOT__u_round__DOT__result_m_ext = (VL_GTS_III(32, 0x3bU, 
-                                                             VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))
-                                                   ? 
-                                                  (0x1ffU 
+                                                 | (IData)(
+                                                           (0ULL 
+                                                            != bf16_exp2__DOT__u_round__DOT__sticky_masked))));
+    bf16_exp2__DOT__u_round__DOT__sum_m_ext = (VL_GTS_III(32, 0x3bU, 
+                                                          VL_EXTENDS_II(32,9, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))
+                                                ? (0x1ffU 
                                                    & (IData)(
                                                              (0x7ffffffffffffffULL 
                                                               & VL_SHIFTR_QQI(59,59,9, bf16_exp2__DOT__u_normalize__DOT__poly_mant_comb, (IData)(bf16_exp2__DOT__u_round__DOT__shift_9)))))
-                                                   : 0U);
+                                                : 0U);
     if (bf16_exp2__DOT__u_round__DOT__round_up) {
-        bf16_exp2__DOT__u_round__DOT__result_m_ext 
-            = (0x1ffU & ((IData)(1U) + (IData)(bf16_exp2__DOT__u_round__DOT__result_m_ext)));
+        bf16_exp2__DOT__u_round__DOT__sum_m_ext = (0x1ffU 
+                                                   & ((IData)(1U) 
+                                                      + (IData)(bf16_exp2__DOT__u_round__DOT__sum_m_ext)));
     }
+    bf16_exp2__DOT__u_round__DOT__result_m_ext = bf16_exp2__DOT__u_round__DOT__sum_m_ext;
     if ((0x100U & (IData)(bf16_exp2__DOT__u_round__DOT__result_m_ext))) {
         bf16_exp2__DOT__u_round__DOT__adjusted_exp 
             = (0x1ffU & ((IData)(1U) + (IData)(bf16_exp2__DOT__u_round__DOT__adjusted_exp)));

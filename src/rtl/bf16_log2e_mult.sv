@@ -26,7 +26,10 @@ module bf16_log2e_mult
     parameter int LOG2E_VAL = LOG2E_VAL_DEFAULT,  // 0x5c551d
     parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 29 = no rounding
     parameter bit REGISTER_OUTPUT = 1'b0,
-    parameter bit RESET_DATAPATH  = 1'b1
+    parameter bit RESET_DATAPATH  = 1'b1,
+    // Retiming: 1 inserts a register between the multiply and the RNE
+    // rounding adder. Bit-exact; costs one extra cycle of latency.
+    parameter int EXTRA_STAGES    = 0
 )(
     input  logic                                   clk,
     input  logic                                   rst_n,
@@ -47,12 +50,45 @@ module bf16_log2e_mult
     // Rounded width = MANT_MULT_I + MANT_MULT_ROUND_FRAC
     localparam int ROUNDED_W = MANT_MULT_I + MANT_MULT_ROUND_FRAC;
 
+    logic [MANT_MULT_W-1:0] mant_mult_raw;
     logic [MANT_MULT_W-1:0] mant_mult;
+    logic [MANT_SRC_W-1:0]  mant_src_d;
+    logic                   base2_d;
     logic [MANT_MULT_W-1:0] mant_mult_rne;
     logic [MANT_MULT_W-1:0] mant_out_comb;
 
     // Product: mant_src (1.7) * log2e (1.22) = 2.29 = 31 bits
-    assign mant_mult = mant_src * LOG2E_VAL[LOG2E_W-1:0];
+    assign mant_mult_raw = mant_src * LOG2E_VAL[LOG2E_W-1:0];
+
+    // -------------------------------------------------------------------------
+    // Retiming register: separates the multiply from the RNE rounding adder.
+    // Without it the stage is DSP multiply + 5-deep carry chain + mux, and the
+    // output register gets absorbed into the NEXT block's DSP input register,
+    // so the whole thing counts as one stage. mant_src and base2 ride along
+    // because the base2 bypass has to stay aligned with the rounded path.
+    // The register lands in the DSP48 PREG, so it costs no fabric.
+    // -------------------------------------------------------------------------
+    generate
+        if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_mult_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    mant_mult <= '0; mant_src_d <= '0; base2_d <= 1'b1;
+                end else if (pipe_en) begin
+                    mant_mult <= mant_mult_raw; mant_src_d <= mant_src; base2_d <= base2;
+                end
+            end
+        end else if (EXTRA_STAGES >= 1) begin : gen_mult_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
+                    mant_mult <= mant_mult_raw; mant_src_d <= mant_src; base2_d <= base2;
+                end
+            end
+        end else begin : gen_mult_wire
+            assign mant_mult  = mant_mult_raw;
+            assign mant_src_d = mant_src;
+            assign base2_d    = base2;
+        end
+    endgenerate
 
     // -------------------------------------------------------------------------
     // RNE (Round to Nearest Even) rounding of mant_mult from 2.29 to
@@ -99,8 +135,8 @@ module bf16_log2e_mult
     localparam int ALIGN = MANT_MULT_F - MANT_SRC_F;  // = 22
 
     always_comb begin
-        if (base2)
-            mant_out_comb = MANT_MULT_W'({mant_src, {ALIGN{1'b0}}});
+        if (base2_d)
+            mant_out_comb = MANT_MULT_W'({mant_src_d, {ALIGN{1'b0}}});
         else
             mant_out_comb = mant_mult_rne;
     end

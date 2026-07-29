@@ -23,7 +23,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
     CData/*1:0*/ bf16_expe_poly4__DOT__s2_route;
     CData/*1:0*/ bf16_expe_poly4__DOT__s2_eo;
     CData/*3:0*/ bf16_expe_poly4__DOT__s2_tail_addr;
-    CData/*7:0*/ bf16_expe_poly4__DOT__gen_axi_pipelined__DOT__valid_sr;
     CData/*1:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_route;
     CData/*3:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_tail;
     CData/*1:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_eo;
@@ -38,6 +37,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
     VL_OUT16(m_axis_tdata,15,0);
     SData/*8:0*/ bf16_expe_poly4__DOT__s2_int_part;
     SData/*15:0*/ bf16_expe_poly4__DOT__core_data;
+    SData/*11:0*/ bf16_expe_poly4__DOT__gen_axi_pipelined__DOT__valid_sr;
     SData/*15:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_onehot;
     IData/*21:0*/ bf16_expe_poly4__DOT__s1_decomposed;
     IData/*16:0*/ bf16_expe_poly4__DOT__s2_frac;
@@ -48,11 +48,15 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
     IData/*24:0*/ bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__3__KET____DOT__u_step__acc_out;
     IData/*31:0*/ __VactIterCount;
     QData/*40:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__scaled_comb;
-    VlUnpacked<CData/*1:0*/, 5> bf16_expe_poly4__DOT__ctrl_eo;
-    VlUnpacked<CData/*1:0*/, 5> bf16_expe_poly4__DOT__ctrl_route;
-    VlUnpacked<SData/*8:0*/, 5> bf16_expe_poly4__DOT__ctrl_int;
-    VlUnpacked<CData/*6:0*/, 5> bf16_expe_poly4__DOT__ctrl_tail;
-    VlUnpacked<IData/*16:0*/, 5> bf16_expe_poly4__DOT__ctrl_frac;
+    QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__0__KET____DOT__u_step__DOT__mult_r;
+    QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__1__KET____DOT__u_step__DOT__mult_r;
+    QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__2__KET____DOT__u_step__DOT__mult_r;
+    QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__3__KET____DOT__u_step__DOT__mult_r;
+    VlUnpacked<CData/*1:0*/, 9> bf16_expe_poly4__DOT__ctrl_eo;
+    VlUnpacked<CData/*1:0*/, 9> bf16_expe_poly4__DOT__ctrl_route;
+    VlUnpacked<SData/*8:0*/, 9> bf16_expe_poly4__DOT__ctrl_int;
+    VlUnpacked<CData/*6:0*/, 9> bf16_expe_poly4__DOT__ctrl_tail;
+    VlUnpacked<IData/*16:0*/, 9> bf16_expe_poly4__DOT__ctrl_frac;
     VlUnpacked<CData/*6:0*/, 11> bf16_expe_poly4__DOT__u_tail_rom__DOT__rom;
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;

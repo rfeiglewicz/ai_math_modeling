@@ -28,7 +28,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_exp2___024root final : public Verilated
     VL_OUT16(m_axis_tdata,15,0);
     IData/*21:0*/ bf16_exp2__DOT__s8_final_fp;
     IData/*31:0*/ __VactIterCount;
-    QData/*58:0*/ bf16_exp2__DOT__u_round__DOT__unnamedblk1__DOT__sticky_mask;
     VlUnpacked<QData/*41:0*/, 128> bf16_exp2__DOT__u_lin_approx__DOT__u_coeff_rom__DOT__rom;
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;

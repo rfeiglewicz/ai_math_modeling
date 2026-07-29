@@ -47,7 +47,27 @@ module bf16_exp2
     parameter bit RESET_DATAPATH = 1'b1,
     // Pad the output to this many pipeline stages so every core has the same
     // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
-    parameter int PIPE_TARGET = UNIFIED_PIPE_DEPTH
+    parameter int PIPE_TARGET = UNIFIED_PIPE_DEPTH,
+    // -------------------------------------------------------------------------
+    // Retiming knobs.
+    //
+    // Without these the coefficient ROM read, the 21x30 multiply, the 62-bit
+    // subtract, the priority encoder and the barrel shifter all sit in ONE
+    // combinational stage: 18 logic levels, ~19.5 ns, which caps the core at
+    // roughly 50 MHz while every other stage idles. Splitting that stage is
+    // pure retiming -- the arithmetic is unchanged and the result stays
+    // bit-identical; only latency grows, and the growth is absorbed by
+    // shrinking the output padding, so the total stays at PIPE_TARGET.
+    //
+    //   RETIME_LOG2E  0..1  register inside bf16_log2e_mult
+    //   RETIME_APPROX 0..2  registers inside bf16_linear_approx
+    //   RETIME_NORM   0..1  register inside bf16_normalize
+    //   RETIME_ROUND  0..2  registers inside bf16_round
+    // -------------------------------------------------------------------------
+    parameter int RETIME_LOG2E  = 1,
+    parameter int RETIME_APPROX = 1,
+    parameter int RETIME_NORM   = 1,
+    parameter int RETIME_ROUND  = 2
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -69,7 +89,23 @@ module bf16_exp2
     // Data path FFs: decompose, log2e_mult, unified_shift, BRAM(linear_approx),
     //                normalize, round, recompose.
     // =========================================================================
-    localparam int CORE_DEPTH = REGISTER_STAGES ? 7 : 0;
+    // Retiming only makes sense when the pipeline registers exist at all; in
+    // combinational mode every one of these collapses to zero.
+    localparam int RT_LOG2E  = REGISTER_STAGES ? RETIME_LOG2E  : 0;
+    localparam int RT_APPROX = REGISTER_STAGES ? RETIME_APPROX : 0;
+    localparam int RT_NORM   = REGISTER_STAGES ? RETIME_NORM   : 0;
+    localparam int RT_ROUND  = REGISTER_STAGES ? RETIME_ROUND  : 0;
+
+    // Registers added before the rounder shift both the int_part and the
+    // early-out code; registers added inside the rounder shift only the
+    // early-out code, because int_part is consumed at the rounder input.
+    // A register added inside the log2(e) multiply shifts everything after it,
+    // so it lengthens the exponent and early-out chains but leaves the
+    // int_part chain alone -- int_part is produced downstream of it.
+    localparam int RETIME_PRE   = RT_APPROX + RT_NORM;
+    localparam int RETIME_POST  = RETIME_PRE + RT_ROUND;
+    localparam int RETIME_EXTRA = RT_LOG2E + RETIME_POST;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? (7 + RETIME_EXTRA) : 0;
     localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
                                 ? PIPE_TARGET - CORE_DEPTH : 0;
     localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
@@ -159,32 +195,42 @@ module bf16_exp2
     // =========================================================================
     logic                            s3_base2;
     logic signed [8:0]               s4_exponent;
-    logic signed [IN_CONV_INT_W-1:0] s5_int_part;
     logic signed [IN_CONV_INT_W-1:0] s6_int_part;
+
+    localparam int EXP_DELAY = REGISTER_STAGES ? (1 + RT_LOG2E) : 0;
+
+    logic signed [8:0] exp_delay [EXP_DELAY+1];
+    assign exp_delay[0] = s1_decomposed.exponent;
 
     generate
         if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_align_regs
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) begin
-                    s3_base2    <= 1'b1;
-                    s4_exponent <= '0;
-                end else if (pipe_en) begin
-                    s3_base2    <= base2;
-                    s4_exponent <= s1_decomposed.exponent;
-                end
+                if (!rst_n)       s3_base2 <= 1'b1;
+                else if (pipe_en) s3_base2 <= base2;
             end
         end else if (REGISTER_STAGES) begin : gen_align_regs_nrst
             always_ff @(posedge clk) begin
-                if (pipe_en) begin
-                    s3_base2    <= base2;
-                    s4_exponent <= s1_decomposed.exponent;
-                end
+                if (pipe_en) s3_base2 <= base2;
             end
         end else begin : gen_align_wire
-            assign s3_base2    = base2;
-            assign s4_exponent = s1_decomposed.exponent;
+            assign s3_base2 = base2;
+        end
+
+        for (genvar i = 0; i < EXP_DELAY; i++) begin : gen_exp_delay
+            if (RESET_DATAPATH) begin : gen_rst
+                always_ff @(posedge clk or negedge rst_n) begin
+                    if (!rst_n)       exp_delay[i+1] <= '0;
+                    else if (pipe_en) exp_delay[i+1] <= exp_delay[i];
+                end
+            end else begin : gen_nrst
+                always_ff @(posedge clk) begin
+                    if (pipe_en) exp_delay[i+1] <= exp_delay[i];
+                end
+            end
         end
     endgenerate
+
+    assign s4_exponent = exp_delay[EXP_DELAY];
 
     // =========================================================================
     // Stage 3: Log2(e) multiply (for expe mode; bypass in base2 mode)
@@ -200,7 +246,8 @@ module bf16_exp2
         .LOG2E_VAL            (LOG2E_VAL),
         .MANT_MULT_ROUND_FRAC(MANT_MULT_ROUND_FRAC),
         .REGISTER_OUTPUT      (REGISTER_STAGES),
-        .RESET_DATAPATH       (RESET_DATAPATH)
+        .RESET_DATAPATH       (RESET_DATAPATH),
+        .EXTRA_STAGES         (RT_LOG2E)
     ) u_log2e_mult (
         .clk      (clk),
         .rst_n    (rst_n),
@@ -240,7 +287,8 @@ module bf16_exp2
         .COEFF_F         (COEFF_F),
         .REGISTER_OUTPUT (REGISTER_STAGES),
         .RESET_DATAPATH  (RESET_DATAPATH),
-        .FRAC_ZERO_LSBS  (MANT_MULT_F - MANT_MULT_ROUND_FRAC)
+        .FRAC_ZERO_LSBS  (MANT_MULT_F - MANT_MULT_ROUND_FRAC),
+        .EXTRA_STAGES    (RT_APPROX)
     ) u_lin_approx (
         .clk             (clk),
         .rst_n           (rst_n),
@@ -257,7 +305,8 @@ module bf16_exp2
 
     bf16_normalize #(
         .REGISTER_OUTPUT(REGISTER_STAGES),
-        .RESET_DATAPATH (RESET_DATAPATH)
+        .RESET_DATAPATH (RESET_DATAPATH),
+        .EXTRA_STAGES   (RT_NORM)
     ) u_normalize (
         .clk             (clk),
         .rst_n           (rst_n),
@@ -268,32 +317,32 @@ module bf16_exp2
     );
 
     // =========================================================================
-    // int_part alignment: s4_int_part (T+3) must reach stage 7 at T+5.
-    // Pipeline adds registers in stages 5 and 6, so we need 2 extra FFs.
+    // int_part alignment: s4_int_part leaves the unified shift and has to meet
+    // the rounder again after the approximation and normalisation stages.
+    // Base depth is 2 (linear_approx + normalize); every retiming register
+    // added inside those two blocks lengthens this chain by the same amount.
     // =========================================================================
+    localparam int INT_DELAY = REGISTER_STAGES ? (2 + RETIME_PRE) : 0;
+
+    logic signed [IN_CONV_INT_W-1:0] int_delay [INT_DELAY+1];
+    assign int_delay[0] = s4_int_part;
+
     generate
-        if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_int_delay
-            always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) begin
-                    s5_int_part <= '0;
-                    s6_int_part <= '0;
-                end else if (pipe_en) begin
-                    s5_int_part <= s4_int_part;
-                    s6_int_part <= s5_int_part;
+        for (genvar i = 0; i < INT_DELAY; i++) begin : gen_int_delay
+            if (RESET_DATAPATH) begin : gen_rst
+                always_ff @(posedge clk or negedge rst_n) begin
+                    if (!rst_n)       int_delay[i+1] <= '0;
+                    else if (pipe_en) int_delay[i+1] <= int_delay[i];
+                end
+            end else begin : gen_nrst
+                always_ff @(posedge clk) begin
+                    if (pipe_en) int_delay[i+1] <= int_delay[i];
                 end
             end
-        end else if (REGISTER_STAGES) begin : gen_int_delay_nrst
-            always_ff @(posedge clk) begin
-                if (pipe_en) begin
-                    s5_int_part <= s4_int_part;
-                    s6_int_part <= s5_int_part;
-                end
-            end
-        end else begin : gen_int_wire
-            assign s5_int_part = s4_int_part;
-            assign s6_int_part = s4_int_part;
         end
     endgenerate
+
+    assign s6_int_part = int_delay[INT_DELAY];
 
     // =========================================================================
     // Stage 7: Round (RNE)
@@ -302,7 +351,8 @@ module bf16_exp2
 
     bf16_round #(
         .REGISTER_OUTPUT(REGISTER_STAGES),
-        .RESET_DATAPATH (RESET_DATAPATH)
+        .RESET_DATAPATH (RESET_DATAPATH),
+        .EXTRA_STAGES   (RT_ROUND)
     ) u_round (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -315,9 +365,10 @@ module bf16_exp2
 
     // =========================================================================
     // Delay chain for eo_code to keep it aligned with s7_rounded_fp.
-    // EO_DELAY_STAGES = 4 when REGISTER_STAGES=1 (eo at T+2, data at T+6).
+    // Base is 4 stages (eo at T+2, data at T+6); retiming registers inside the
+    // approximation and normalisation blocks push the data further out.
     // =========================================================================
-    localparam int EO_DELAY_STAGES = REGISTER_STAGES ? 4 : 0;
+    localparam int EO_DELAY_STAGES = REGISTER_STAGES ? (4 + RETIME_EXTRA) : 0;
 
     early_out_t eo_delay [EO_DELAY_STAGES+1];
     assign eo_delay[0] = s2_eo_code;

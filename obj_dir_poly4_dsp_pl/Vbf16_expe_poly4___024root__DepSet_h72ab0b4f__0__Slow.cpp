@@ -68,7 +68,7 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___eval_settle(Vbf16_expe_poly4___02
 #ifdef VL_DEBUG
             Vbf16_expe_poly4___024root___dump_triggers__stl(vlSelf);
 #endif
-            VL_FATAL_MT("src/rtl/bf16_expe_poly4.sv", 96, "", "Settle region did not converge.");
+            VL_FATAL_MT("src/rtl/bf16_expe_poly4.sv", 121, "", "Settle region did not converge.");
         }
         __VstlIterCount = ((IData)(1U) + __VstlIterCount);
         __VstlContinue = 0U;
@@ -130,7 +130,7 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___stl_sequent__TOP__0(Vbf16_expe_po
                                                     (0x7fffU 
                                                      & (IData)(vlSelf->s_axis_tdata)))))));
     vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_poly4__DOT__gen_axi_pipelined__DOT__valid_sr) 
-                                   >> 7U));
+                                   >> 0xbU));
     vlSelf->bf16_expe_poly4__DOT__u_decompose__DOT__hidden_bit_comb 
         = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_poly4__DOT__u_decompose__DOT__status_comb)))))) 
            && (1U & (~ ((IData)(vlSelf->bf16_expe_poly4__DOT__u_decompose__DOT__status_comb) 
@@ -236,23 +236,23 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___ctor_var_reset(Vbf16_expe_poly4__
     vlSelf->bf16_expe_poly4__DOT__s2_int_part = VL_RAND_RESET_I(9);
     vlSelf->bf16_expe_poly4__DOT__s2_frac = VL_RAND_RESET_I(17);
     vlSelf->bf16_expe_poly4__DOT__s2_tail_addr = VL_RAND_RESET_I(4);
-    for (int __Vi0 = 0; __Vi0 < 5; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 9; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__ctrl_eo[__Vi0] = VL_RAND_RESET_I(2);
     }
-    for (int __Vi0 = 0; __Vi0 < 5; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 9; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__ctrl_route[__Vi0] = VL_RAND_RESET_I(2);
     }
-    for (int __Vi0 = 0; __Vi0 < 5; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 9; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__ctrl_int[__Vi0] = VL_RAND_RESET_I(9);
     }
-    for (int __Vi0 = 0; __Vi0 < 5; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 9; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__ctrl_tail[__Vi0] = VL_RAND_RESET_I(7);
     }
-    for (int __Vi0 = 0; __Vi0 < 5; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 9; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__ctrl_frac[__Vi0] = VL_RAND_RESET_I(17);
     }
     vlSelf->bf16_expe_poly4__DOT__core_data = VL_RAND_RESET_I(16);
-    vlSelf->bf16_expe_poly4__DOT__gen_axi_pipelined__DOT__valid_sr = VL_RAND_RESET_I(8);
+    vlSelf->bf16_expe_poly4__DOT__gen_axi_pipelined__DOT__valid_sr = VL_RAND_RESET_I(12);
     vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_t7 = VL_RAND_RESET_I(25);
     vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_onehot = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_route = VL_RAND_RESET_I(2);
@@ -268,6 +268,10 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___ctor_var_reset(Vbf16_expe_poly4__
     for (int __Vi0 = 0; __Vi0 < 11; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__u_tail_rom__DOT__rom[__Vi0] = VL_RAND_RESET_I(7);
     }
+    vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__0__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);
+    vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__1__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);
+    vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__2__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);
+    vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__3__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);
     vlSelf->__Vtrigprevexpr___TOP__clk__0 = VL_RAND_RESET_I(1);
     vlSelf->__Vtrigprevexpr___TOP__rst_n__0 = VL_RAND_RESET_I(1);
 }

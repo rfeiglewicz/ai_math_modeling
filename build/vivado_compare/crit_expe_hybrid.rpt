@@ -1,0 +1,194 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Jul 29 20:18:46 2026
+| Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
+| Command      : report_timing -max_paths 3 -unique_pins -delay_type max -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/crit_expe_hybrid.rpt
+| Design       : bf16_expe_hybrid
+| Device       : 7a200t-fbg484
+| Speed File   : -1  PRODUCTION 1.23 2018-06-13
+| Design State : Synthesized
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (VIOLATED) :        -1.995ns  (required time - arrival time)
+  Source:                 gen_stage2_regs.s2_mantissa_reg[0]/C
+                            (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Destination:            u_sparse/gen_reg.data_reg[4]/D
+                            (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            2.000ns  (clk rise@2.000ns - clk rise@0.000ns)
+  Data Path Delay:        3.844ns  (logic 0.999ns (25.989%)  route 2.845ns (74.011%))
+  Logic Levels:           3  (LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 4.100 - 2.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=65, unplaced)        0.584     2.424    clk_IBUF_BUFG
+                         FDCE                                         r  gen_stage2_regs.s2_mantissa_reg[0]/C
+  -------------------------------------------------------------------    -------------------
+                         FDCE (Prop_fdce_C_Q)         0.456     2.880 r  gen_stage2_regs.s2_mantissa_reg[0]/Q
+                         net (fo=39, unplaced)        1.041     3.921    u_sparse/s2_mantissa[0]
+                         LUT6 (Prop_lut6_I0_O)        0.295     4.216 r  u_sparse/gen_reg.data[4]_i_4/O
+                         net (fo=1, unplaced)         0.902     5.118    u_sparse/gen_reg.data[4]_i_4_n_0
+                         LUT5 (Prop_lut5_I0_O)        0.124     5.242 r  u_sparse/gen_reg.data[4]_i_2/O
+                         net (fo=1, unplaced)         0.902     6.144    u_sparse/gen_reg.data[4]_i_2_n_0
+                         LUT6 (Prop_lut6_I0_O)        0.124     6.268 r  u_sparse/gen_reg.data[4]_i_1/O
+                         net (fo=1, unplaced)         0.000     6.268    u_sparse/gen_reg.data[4]_i_1_n_0
+                         FDCE                                         r  u_sparse/gen_reg.data_reg[4]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        2.000     2.000 r  
+                                                      0.000     2.000 r  clk (IN)
+                         net (fo=0)                   0.000     2.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.811     2.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     3.570    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.091     3.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=65, unplaced)        0.439     4.100    u_sparse/clk_IBUF_BUFG
+                         FDCE                                         r  u_sparse/gen_reg.data_reg[4]/C
+                         clock pessimism              0.178     4.279    
+                         clock uncertainty           -0.035     4.243    
+                         FDCE (Setup_fdce_C_D)        0.029     4.272    u_sparse/gen_reg.data_reg[4]
+  -------------------------------------------------------------------
+                         required time                          4.272    
+                         arrival time                          -6.268    
+  -------------------------------------------------------------------
+                         slack                                 -1.995    
+
+Slack (VIOLATED) :        -1.842ns  (required time - arrival time)
+  Source:                 gen_stage2_regs.s2_mantissa_reg[3]/C
+                            (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Destination:            u_sparse/gen_reg.data_reg[3]/D
+                            (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            2.000ns  (clk rise@2.000ns - clk rise@0.000ns)
+  Data Path Delay:        3.691ns  (logic 0.999ns (27.066%)  route 2.692ns (72.934%))
+  Logic Levels:           3  (LUT5=2 LUT6=1)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 4.100 - 2.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=65, unplaced)        0.584     2.424    clk_IBUF_BUFG
+                         FDCE                                         r  gen_stage2_regs.s2_mantissa_reg[3]/C
+  -------------------------------------------------------------------    -------------------
+                         FDCE (Prop_fdce_C_Q)         0.456     2.880 f  gen_stage2_regs.s2_mantissa_reg[3]/Q
+                         net (fo=49, unplaced)        0.888     3.768    u_sparse/s2_mantissa[3]
+                         LUT5 (Prop_lut5_I0_O)        0.295     4.063 r  u_sparse/gen_reg.data[3]_i_6/O
+                         net (fo=1, unplaced)         0.902     4.965    u_sparse/gen_reg.data[3]_i_6_n_0
+                         LUT6 (Prop_lut6_I0_O)        0.124     5.089 r  u_sparse/gen_reg.data[3]_i_3/O
+                         net (fo=1, unplaced)         0.902     5.991    u_sparse/gen_reg.data[3]_i_3_n_0
+                         LUT5 (Prop_lut5_I2_O)        0.124     6.115 r  u_sparse/gen_reg.data[3]_i_1/O
+                         net (fo=1, unplaced)         0.000     6.115    u_sparse/gen_reg.data[3]_i_1_n_0
+                         FDCE                                         r  u_sparse/gen_reg.data_reg[3]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        2.000     2.000 r  
+                                                      0.000     2.000 r  clk (IN)
+                         net (fo=0)                   0.000     2.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.811     2.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     3.570    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.091     3.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=65, unplaced)        0.439     4.100    u_sparse/clk_IBUF_BUFG
+                         FDCE                                         r  u_sparse/gen_reg.data_reg[3]/C
+                         clock pessimism              0.178     4.279    
+                         clock uncertainty           -0.035     4.243    
+                         FDCE (Setup_fdce_C_D)        0.029     4.272    u_sparse/gen_reg.data_reg[3]
+  -------------------------------------------------------------------
+                         required time                          4.272    
+                         arrival time                          -6.115    
+  -------------------------------------------------------------------
+                         slack                                 -1.842    
+
+Slack (VIOLATED) :        -1.616ns  (required time - arrival time)
+  Source:                 gen_stage2_regs.s2_mantissa_reg[3]/C
+                            (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Destination:            u_sparse/gen_reg.data_reg[1]/D
+                            (rising edge-triggered cell FDCE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            2.000ns  (clk rise@2.000ns - clk rise@0.000ns)
+  Data Path Delay:        3.465ns  (logic 0.999ns (28.831%)  route 2.466ns (71.169%))
+  Logic Levels:           3  (LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 4.100 - 2.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=65, unplaced)        0.584     2.424    clk_IBUF_BUFG
+                         FDCE                                         r  gen_stage2_regs.s2_mantissa_reg[3]/C
+  -------------------------------------------------------------------    -------------------
+                         FDCE (Prop_fdce_C_Q)         0.456     2.880 f  gen_stage2_regs.s2_mantissa_reg[3]/Q
+                         net (fo=49, unplaced)        0.888     3.768    u_sparse/s2_mantissa[3]
+                         LUT5 (Prop_lut5_I0_O)        0.295     4.063 r  u_sparse/gen_reg.data[5]_i_3/O
+                         net (fo=2, unplaced)         0.913     4.976    u_sparse/gen_reg.data[5]_i_3_n_0
+                         LUT6 (Prop_lut6_I0_O)        0.124     5.100 r  u_sparse/gen_reg.data[1]_i_4/O
+                         net (fo=1, unplaced)         0.665     5.765    u_sparse/gen_reg.data[1]_i_4_n_0
+                         LUT6 (Prop_lut6_I3_O)        0.124     5.889 r  u_sparse/gen_reg.data[1]_i_1/O
+                         net (fo=1, unplaced)         0.000     5.889    u_sparse/gen_reg.data[1]_i_1_n_0
+                         FDCE                                         r  u_sparse/gen_reg.data_reg[1]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        2.000     2.000 r  
+                                                      0.000     2.000 r  clk (IN)
+                         net (fo=0)                   0.000     2.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.811     2.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     3.570    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.091     3.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=65, unplaced)        0.439     4.100    u_sparse/clk_IBUF_BUFG
+                         FDCE                                         r  u_sparse/gen_reg.data_reg[1]/C
+                         clock pessimism              0.178     4.279    
+                         clock uncertainty           -0.035     4.243    
+                         FDCE (Setup_fdce_C_D)        0.029     4.272    u_sparse/gen_reg.data_reg[1]
+  -------------------------------------------------------------------
+                         required time                          4.272    
+                         arrival time                          -5.889    
+  -------------------------------------------------------------------
+                         slack                                 -1.616    
+
+
+
+

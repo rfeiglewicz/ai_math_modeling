@@ -47,7 +47,13 @@ module bf16_expe_poly4_step
     import bf16_expe_poly4_pkg::*;
 #(
     parameter bit REGISTERED     = 1'b1,
-    parameter bit RESET_DATAPATH = 1'b0
+    parameter bit RESET_DATAPATH = 1'b0,
+    // Retiming: 1 inserts a register between the multiply and the add, which
+    // is exactly the DSP48E1 MREG. Without it one Horner step is a full
+    // combinational multiply-accumulate, about 4.3 ns, and that alone caps the
+    // cascade at roughly 170 MHz. (a*b)+c is unchanged, so this is bit-exact;
+    // it costs one extra cycle per step.
+    parameter int MULT_STAGES    = 0
 )(
     /* verilator lint_off UNUSEDSIGNAL */
     input  logic                      clk,
@@ -59,12 +65,31 @@ module bf16_expe_poly4_step
     input  logic signed [PROD_W-1:0]  c_term,
     output logic signed [ACC_W-1:0]   acc_out
 );
+    logic signed [PROD_W-1:0] mult_raw;
+    logic signed [PROD_W-1:0] mult_r;
     logic signed [PROD_W-1:0] prod;
     logic signed [ACC_W-1:0]  next;
 
-    // A * B + C.  frac is unsigned, so it is zero-extended by one bit before
-    // being treated as a signed DSP operand.
-    assign prod = acc_in * $signed({1'b0, frac}) + c_term;
+    // A * B, kept on its own so the register below maps onto MREG.
+    assign mult_raw = acc_in * $signed({1'b0, frac});
+
+    generate
+        if (MULT_STAGES >= 1 && RESET_DATAPATH) begin : gen_mreg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n)       mult_r <= '0;
+                else if (pipe_en) mult_r <= mult_raw;
+            end
+        end else if (MULT_STAGES >= 1) begin : gen_mreg
+            always_ff @(posedge clk) begin
+                if (pipe_en) mult_r <= mult_raw;
+            end
+        end else begin : gen_mreg_wire
+            assign mult_r = mult_raw;
+        end
+    endgenerate
+
+    // ... + C
+    assign prod = mult_r + c_term;
 
     // Arithmetic shift: floor division, matching the C++ model exactly.
     assign next = ACC_W'(prod >>> FRAC_BITS);
@@ -110,7 +135,14 @@ module bf16_expe_poly4
     parameter bit RESET_DATAPATH   = 1'b0,
     // Pad the output to this many pipeline stages so every core has the same
     // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
-    parameter int PIPE_TARGET      = UNIFIED_PIPE_DEPTH
+    parameter int PIPE_TARGET      = UNIFIED_PIPE_DEPTH,
+    // Retiming: extra register per Horner step (DSP48E1 MREG). Bit-exact,
+    // costs DEGREE extra cycles of latency in total.
+    parameter int RETIME_MULT      = 1,
+    // Retiming for the fabric front end: splits the constant multiply from the
+    // alignment shift. The DSP front end already has this register (see
+    // FE_EXTRA), which is most of why it clocks faster. Bit-exact.
+    parameter int RETIME_FE        = 1
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -121,12 +153,18 @@ module bf16_expe_poly4
     output logic        m_axis_tvalid,
     input  logic        m_axis_tready
 );
-    // The DSP front-end needs one extra register: the one-hot scaling and the
-    // wide multiply cannot share a pipeline stage without hurting Fmax.
-    localparam int FE_EXTRA = (DSP_FRONTEND && REGISTER_STAGES) ? 1 : 0;
+    // Both front ends get one register between the multiply and the shift: the
+    // DSP one needs it because the one-hot scaling and the wide multiply cannot
+    // share a stage, the fabric one because the CSD tree plus barrel shifter is
+    // otherwise the longest path in the core.
+    localparam int FE_EXTRA = (REGISTER_STAGES && (DSP_FRONTEND || RETIME_FE)) ? 1 : 0;
 
-    // decompose + align + DEGREE Horner steps + output register
-    localparam int CORE_DEPTH = REGISTER_STAGES ? (3 + FE_EXTRA + DEGREE) : 0;
+    // decompose + align + DEGREE Horner steps + output register.
+    // With RETIME_MULT each Horner step occupies STEP_DEPTH stages instead of 1.
+    localparam int MSTG       = REGISTER_STAGES ? RETIME_MULT : 0;
+    localparam int STEP_DEPTH = REGISTER_STAGES ? (1 + MSTG) : 1;
+    localparam int CTRL_LEN   = DEGREE * STEP_DEPTH;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? (3 + FE_EXTRA + CTRL_LEN) : 0;
     localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
                                 ? PIPE_TARGET - CORE_DEPTH : 0;
     localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
@@ -352,10 +390,51 @@ module bf16_expe_poly4
                             - $signed(s1_decomposed.exponent);
         assign shift_comb   = shift_signed[4:0];  // in [6, 22] for exp in [-9, 7]
 
-        assign fe_aligned   = ALIGNED_W'(mult_comb >> shift_comb);
-        assign fe_route     = route_comb;
-        assign fe_tail_addr = tail_addr_comb;
-        assign fe_eo        = eo_comb;
+        // Optional retiming register between the CSD multiply and the shift.
+        logic [CONST_MULT_W-1:0] fe1_prod;
+        logic [4:0]              fe1_shift;
+        route_t                  fe1_route;
+        logic [3:0]              fe1_tail;
+        early_out_t              fe1_eo;
+
+        if (FE_EXTRA && RESET_DATAPATH) begin : gen_fe_b_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    fe1_prod  <= '0;
+                    fe1_shift <= '0;
+                    fe1_route <= ROUTE_ZERO;
+                    fe1_tail  <= '0;
+                    fe1_eo    <= EO_PLUS_ONE;
+                end else if (pipe_en) begin
+                    fe1_prod  <= mult_comb;
+                    fe1_shift <= shift_comb;
+                    fe1_route <= route_comb;
+                    fe1_tail  <= tail_addr_comb;
+                    fe1_eo    <= eo_comb;
+                end
+            end
+        end else if (FE_EXTRA) begin : gen_fe_b_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
+                    fe1_prod  <= mult_comb;
+                    fe1_shift <= shift_comb;
+                    fe1_route <= route_comb;
+                    fe1_tail  <= tail_addr_comb;
+                    fe1_eo    <= eo_comb;
+                end
+            end
+        end else begin : gen_fe_b_wire
+            assign fe1_prod  = mult_comb;
+            assign fe1_shift = shift_comb;
+            assign fe1_route = route_comb;
+            assign fe1_tail  = tail_addr_comb;
+            assign fe1_eo    = eo_comb;
+        end
+
+        assign fe_aligned   = ALIGNED_W'(fe1_prod >> fe1_shift);
+        assign fe_route     = fe1_route;
+        assign fe_tail_addr = fe1_tail;
+        assign fe_eo        = fe1_eo;
     end
     endgenerate
 
@@ -419,11 +498,11 @@ module bf16_expe_poly4
     // -------------------------------------------------------------------------
     // Control state and f must ride alongside the accumulator, one delay per
     // Horner step, so that everything realigns at the packing stage.
-    early_out_t           ctrl_eo   [0:DEGREE];
-    route_t               ctrl_route[0:DEGREE];
-    logic [INT_W-1:0]     ctrl_int  [0:DEGREE];
-    logic [6:0]           ctrl_tail [0:DEGREE];
-    logic [FRAC_BITS-1:0] ctrl_frac [0:DEGREE];
+    early_out_t           ctrl_eo   [0:CTRL_LEN];
+    route_t               ctrl_route[0:CTRL_LEN];
+    logic [INT_W-1:0]     ctrl_int  [0:CTRL_LEN];
+    logic [6:0]           ctrl_tail [0:CTRL_LEN];
+    logic [FRAC_BITS-1:0] ctrl_frac [0:CTRL_LEN];
 
     assign ctrl_eo[0]    = s2_eo;
     assign ctrl_route[0] = s2_route;
@@ -433,7 +512,7 @@ module bf16_expe_poly4
 
     genvar gi;
     generate
-        for (gi = 0; gi < DEGREE; gi++) begin : gen_ctrl_delay
+        for (gi = 0; gi < CTRL_LEN; gi++) begin : gen_ctrl_delay
             if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_reg_rst
                 always_ff @(posedge clk or negedge rst_n) begin
                     if (!rst_n) begin
@@ -491,11 +570,12 @@ module bf16_expe_poly4
         for (gi = 0; gi < DEGREE; gi++) begin : gen_horner
             bf16_expe_poly4_step #(
                 .REGISTERED(REGISTER_STAGES),
-                .RESET_DATAPATH(RESET_DATAPATH)
+                .RESET_DATAPATH(RESET_DATAPATH),
+                .MULT_STAGES(MSTG)
             ) u_step (
                 .clk(clk), .rst_n(rst_n), .pipe_en(pipe_en),
                 .acc_in(acc_chain[gi]),
-                .frac(ctrl_frac[gi]),
+                .frac(ctrl_frac[gi*STEP_DEPTH]),
                 .c_term(c_terms[gi]),
                 .acc_out(acc_chain[gi+1])
             );
@@ -515,7 +595,7 @@ module bf16_expe_poly4
     // count[6:0] is already 0 in that case, so only the exponent needs the carry.
     logic [7:0] biased_exp;
     logic [6:0] out_mantissa;
-    assign biased_exp   = 8'd126 - 8'(ctrl_int[DEGREE]) + 8'(count[7]);
+    assign biased_exp   = 8'd126 - 8'(ctrl_int[CTRL_LEN]) + 8'(count[7]);
     assign out_mantissa = count[6:0];
 
     logic [15:0] poly_result;
@@ -526,14 +606,14 @@ module bf16_expe_poly4
     // -------------------------------------------------------------------------
     logic [15:0] result_comb;
     always_comb begin
-        unique case (ctrl_eo[DEGREE])
+        unique case (ctrl_eo[CTRL_LEN])
             EO_QNAN:      result_comb = BF16_QNAN;
             EO_PLUS_ONE:  result_comb = BF16_PLUS_ONE;
             EO_PLUS_ZERO: result_comb = BF16_PLUS_ZERO;
             default: begin
-                unique case (ctrl_route[DEGREE])
+                unique case (ctrl_route[CTRL_LEN])
                     ROUTE_POLY: result_comb = poly_result;
-                    ROUTE_TAIL: result_comb = {9'b0, ctrl_tail[DEGREE]};
+                    ROUTE_TAIL: result_comb = {9'b0, ctrl_tail[CTRL_LEN]};
                     default:    result_comb = 16'h0000;
                 endcase
             end

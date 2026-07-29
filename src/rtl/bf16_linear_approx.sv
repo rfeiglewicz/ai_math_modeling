@@ -30,7 +30,15 @@ module bf16_linear_approx
     // product to 2.F leaves (29-F) zero LSBs, and the unified shift is a pure
     // LEFT shift, so those zeros survive into frac_part unchanged.
     // Narrowing the multiplier by this amount is exact, not an approximation.
-    parameter int FRAC_ZERO_LSBS  = 0
+    parameter int FRAC_ZERO_LSBS  = 0,
+    // Retiming: extra pipeline registers inside the arithmetic.
+    //   0 - ROM read, multiply and subtract all share one stage (original).
+    //   1 - register the raw product, splitting multiply from subtract. The
+    //       register lands in the DSP48 PREG, so it costs no fabric.
+    //   2 - additionally register the subtract result.
+    // Purely a timing transformation: the arithmetic is untouched, so the
+    // result stays bit-identical. Only latency grows, by EXTRA_STAGES cycles.
+    parameter int EXTRA_STAGES    = 0
 )(
     input  logic              clk,
     input  logic              rst_n,
@@ -118,28 +126,70 @@ module bf16_linear_approx
     localparam int CORE_MULT_W = COEFF_W + MULT_X_W;         // 59 or 51
 
     logic [MULT_X_W-1:0]      frac_hi;
+    logic [CORE_MULT_W-1:0]   ax_core_comb;
     logic [CORE_MULT_W-1:0]   ax_core;
+    logic [COEFF_W-1:0]       coeff_b_stage;
     logic [ACTUAL_MULT_W-1:0] ax_unsigned;
     logic signed [CALC_W-1:0] neg_ax;
     logic signed [CALC_W-1:0] b_aligned;
     logic signed [CALC_W-1:0] calc_res;
 
-    assign frac_hi = frac_aligned[IN_F-1 : FRAC_ZERO_LSBS];
+    assign frac_hi      = frac_aligned[IN_F-1 : FRAC_ZERO_LSBS];
+    assign ax_core_comb = coeff_a_w * frac_hi;
+
+    // -------------------------------------------------------------------------
+    // Retiming register 1: between the multiply and the subtract.
+    // b has to be delayed with it so both operands still meet on the same
+    // input sample. Vivado folds this register into the DSP48 PREG.
+    // -------------------------------------------------------------------------
+    generate
+        if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_mult_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    ax_core       <= '0;
+                    coeff_b_stage <= '0;
+                end else if (pipe_en) begin
+                    ax_core       <= ax_core_comb;
+                    coeff_b_stage <= coeff_b_w;
+                end
+            end
+        end else if (EXTRA_STAGES >= 1) begin : gen_mult_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
+                    ax_core       <= ax_core_comb;
+                    coeff_b_stage <= coeff_b_w;
+                end
+            end
+        end else begin : gen_mult_wire
+            assign ax_core       = ax_core_comb;
+            assign coeff_b_stage = coeff_b_w;
+        end
+    endgenerate
 
     always_comb begin
-        ax_core     = coeff_a_w * frac_hi;
         ax_unsigned = ACTUAL_MULT_W'(ax_core) << FRAC_ZERO_LSBS;
         neg_ax      = -signed'({1'b0, ax_unsigned});
-        b_aligned   = signed'({1'b0, CALC_W'({coeff_b_w, {B_SHIFT{1'b0}}})});
+        b_aligned   = signed'({1'b0, CALC_W'({coeff_b_stage, {B_SHIFT{1'b0}}})});
         calc_res    = b_aligned + neg_ax;
     end
 
     // -------------------------------------------------------------------------
-    // Output assignment
-    // When REGISTER_OUTPUT=1 the BRAM read IS the pipeline register stage --
-    // no additional always_ff here so stage latency stays at exactly 1 cycle.
-    // When REGISTER_OUTPUT=0 the result is purely combinational.
+    // Retiming register 2: after the 62-bit subtract, so the carry chain no
+    // longer shares a stage with the priority encoder in bf16_normalize.
     // -------------------------------------------------------------------------
-    assign unnormalized_res = calc_res;
+    generate
+        if (EXTRA_STAGES >= 2 && RESET_DATAPATH) begin : gen_sub_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n)       unnormalized_res <= '0;
+                else if (pipe_en) unnormalized_res <= calc_res;
+            end
+        end else if (EXTRA_STAGES >= 2) begin : gen_sub_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) unnormalized_res <= calc_res;
+            end
+        end else begin : gen_sub_wire
+            assign unnormalized_res = calc_res;
+        end
+    endgenerate
 
 endmodule : bf16_linear_approx

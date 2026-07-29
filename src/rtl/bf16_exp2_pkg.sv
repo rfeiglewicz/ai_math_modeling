@@ -113,12 +113,23 @@ package bf16_exp2_pkg;
     // =========================================================================
     // Common pipeline depth.
     //
-    // The natural depths differ per core (4 for the table cores, 7 for exp2 and
-    // poly4, 8 for poly4 with the DSP front end). Every core pads its output to
-    // UNIFIED_PIPE_DEPTH so that latency and AXI-Stream timing are identical.
+    // Every core pads its output to UNIFIED_PIPE_DEPTH so that latency and
+    // AXI-Stream timing are identical and the cores are interchangeable.
     // Set PIPE_TARGET=0 on a core to get its natural (unpadded) depth back.
+    //
+    // Natural depths with the default retiming applied:
+    //   expe full-lut     4
+    //   expe hybrid       4
+    //   expe cut-ladder   5   (4 + RETIME_CUT)
+    //   expe poly4       11   (3 + 4 Horner steps x 2)
+    //   expe poly4 dsp   12   (3 + 1 front-end + 4 Horner steps x 2)
+    //   bf16_exp2        12   (7 + RETIME_LOG2E/APPROX/NORM/ROUND)
+    //
+    // The retiming registers are not padding: they sit inside the arithmetic
+    // and are what lets the cores clock roughly two to three times faster.
+    // Padding only makes up the difference at the output.
     // =========================================================================
-    localparam int UNIFIED_PIPE_DEPTH = 8;
+    localparam int UNIFIED_PIPE_DEPTH = 12;
 
     // =========================================================================
     // Decomposed BF16 status flags

@@ -1,0 +1,206 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Jul 29 19:15:33 2026
+| Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
+| Command      : report_timing -max_paths 3 -nworst 3 -delay_type max -input_pins -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/crit_expe_poly4_dsp.rpt
+| Design       : bf16_expe_poly4
+| Device       : 7a200t-fbg484
+| Speed File   : -1  PRODUCTION 1.23 2018-06-13
+| Design State : Synthesized
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (VIOLATED) :        -2.417ns  (required time - arrival time)
+  Source:                 gen_stage2_regs.s2_int_part_reg/CLK
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@2.000ns period=4.000ns})
+  Destination:            gen_horner[1].u_step/prod/A[0]
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@2.000ns period=4.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            4.000ns  (clk rise@4.000ns - clk rise@0.000ns)
+  Data Path Delay:        5.874ns  (logic 4.275ns (72.773%)  route 1.599ns (27.227%))
+  Logic Levels:           1  (DSP48E1=1)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 6.100 - 4.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                                                                      r  clk_IBUF_inst/I
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                                                                      r  clk_IBUF_BUFG_inst/I
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=129, unplaced)       0.584     2.424    clk_IBUF_BUFG
+                         DSP48E1                                      r  gen_stage2_regs.s2_int_part_reg/CLK
+  -------------------------------------------------------------------    -------------------
+                         DSP48E1 (Prop_dsp48e1_CLK_P[31])
+                                                      0.434     2.858 r  gen_stage2_regs.s2_int_part_reg/P[31]
+                         net (fo=4, unplaced)         0.800     3.657    gen_horner[0].u_step/D[16]
+                                                                      r  gen_horner[0].u_step/prod/A[16]
+                         DSP48E1 (Prop_dsp48e1_A[16]_P[17])
+                                                      3.841     7.498 r  gen_horner[0].u_step/prod/P[17]
+                         net (fo=1, unplaced)         0.800     8.298    gen_horner[1].u_step/prod_0[0]
+                         DSP48E1                                      r  gen_horner[1].u_step/prod/A[0]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        4.000     4.000 r  
+                                                      0.000     4.000 r  clk (IN)
+                         net (fo=0)                   0.000     4.000    clk
+                                                                      r  clk_IBUF_inst/I
+                         IBUF (Prop_ibuf_I_O)         0.811     4.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     5.570    clk_IBUF
+                                                                      r  clk_IBUF_BUFG_inst/I
+                         BUFG (Prop_bufg_I_O)         0.091     5.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=129, unplaced)       0.439     6.100    gen_horner[1].u_step/clk_IBUF_BUFG
+                         DSP48E1                                      r  gen_horner[1].u_step/prod/CLK
+                         clock pessimism              0.178     6.279    
+                         clock uncertainty           -0.035     6.243    
+                         DSP48E1 (Setup_dsp48e1_CLK_A[0])
+                                                     -0.362     5.881    gen_horner[1].u_step/prod
+  -------------------------------------------------------------------
+                         required time                          5.881    
+                         arrival time                          -8.298    
+  -------------------------------------------------------------------
+                         slack                                 -2.417    
+
+Slack (VIOLATED) :        -2.417ns  (required time - arrival time)
+  Source:                 gen_stage2_regs.s2_int_part_reg/CLK
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@2.000ns period=4.000ns})
+  Destination:            gen_horner[1].u_step/prod/A[0]
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@2.000ns period=4.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            4.000ns  (clk rise@4.000ns - clk rise@0.000ns)
+  Data Path Delay:        5.874ns  (logic 4.275ns (72.773%)  route 1.599ns (27.227%))
+  Logic Levels:           1  (DSP48E1=1)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 6.100 - 4.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                                                                      r  clk_IBUF_inst/I
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                                                                      r  clk_IBUF_BUFG_inst/I
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=129, unplaced)       0.584     2.424    clk_IBUF_BUFG
+                         DSP48E1                                      r  gen_stage2_regs.s2_int_part_reg/CLK
+  -------------------------------------------------------------------    -------------------
+                         DSP48E1 (Prop_dsp48e1_CLK_P[31])
+                                                      0.434     2.858 f  gen_stage2_regs.s2_int_part_reg/P[31]
+                         net (fo=4, unplaced)         0.800     3.657    gen_horner[0].u_step/D[16]
+                                                                      f  gen_horner[0].u_step/prod/A[16]
+                         DSP48E1 (Prop_dsp48e1_A[16]_P[17])
+                                                      3.841     7.498 r  gen_horner[0].u_step/prod/P[17]
+                         net (fo=1, unplaced)         0.800     8.298    gen_horner[1].u_step/prod_0[0]
+                         DSP48E1                                      r  gen_horner[1].u_step/prod/A[0]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        4.000     4.000 r  
+                                                      0.000     4.000 r  clk (IN)
+                         net (fo=0)                   0.000     4.000    clk
+                                                                      r  clk_IBUF_inst/I
+                         IBUF (Prop_ibuf_I_O)         0.811     4.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     5.570    clk_IBUF
+                                                                      r  clk_IBUF_BUFG_inst/I
+                         BUFG (Prop_bufg_I_O)         0.091     5.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=129, unplaced)       0.439     6.100    gen_horner[1].u_step/clk_IBUF_BUFG
+                         DSP48E1                                      r  gen_horner[1].u_step/prod/CLK
+                         clock pessimism              0.178     6.279    
+                         clock uncertainty           -0.035     6.243    
+                         DSP48E1 (Setup_dsp48e1_CLK_A[0])
+                                                     -0.362     5.881    gen_horner[1].u_step/prod
+  -------------------------------------------------------------------
+                         required time                          5.881    
+                         arrival time                          -8.298    
+  -------------------------------------------------------------------
+                         slack                                 -2.417    
+
+Slack (VIOLATED) :        -2.417ns  (required time - arrival time)
+  Source:                 gen_stage2_regs.s2_int_part_reg/CLK
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@2.000ns period=4.000ns})
+  Destination:            gen_horner[1].u_step/prod/A[0]
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@2.000ns period=4.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            4.000ns  (clk rise@4.000ns - clk rise@0.000ns)
+  Data Path Delay:        5.874ns  (logic 4.275ns (72.773%)  route 1.599ns (27.227%))
+  Logic Levels:           1  (DSP48E1=1)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 6.100 - 4.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                                                                      r  clk_IBUF_inst/I
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                                                                      r  clk_IBUF_BUFG_inst/I
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=129, unplaced)       0.584     2.424    clk_IBUF_BUFG
+                         DSP48E1                                      r  gen_stage2_regs.s2_int_part_reg/CLK
+  -------------------------------------------------------------------    -------------------
+                         DSP48E1 (Prop_dsp48e1_CLK_P[30])
+                                                      0.434     2.858 r  gen_stage2_regs.s2_int_part_reg/P[30]
+                         net (fo=4, unplaced)         0.800     3.657    gen_horner[0].u_step/D[15]
+                                                                      r  gen_horner[0].u_step/prod/A[15]
+                         DSP48E1 (Prop_dsp48e1_A[15]_P[17])
+                                                      3.841     7.498 r  gen_horner[0].u_step/prod/P[17]
+                         net (fo=1, unplaced)         0.800     8.298    gen_horner[1].u_step/prod_0[0]
+                         DSP48E1                                      r  gen_horner[1].u_step/prod/A[0]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        4.000     4.000 r  
+                                                      0.000     4.000 r  clk (IN)
+                         net (fo=0)                   0.000     4.000    clk
+                                                                      r  clk_IBUF_inst/I
+                         IBUF (Prop_ibuf_I_O)         0.811     4.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     5.570    clk_IBUF
+                                                                      r  clk_IBUF_BUFG_inst/I
+                         BUFG (Prop_bufg_I_O)         0.091     5.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=129, unplaced)       0.439     6.100    gen_horner[1].u_step/clk_IBUF_BUFG
+                         DSP48E1                                      r  gen_horner[1].u_step/prod/CLK
+                         clock pessimism              0.178     6.279    
+                         clock uncertainty           -0.035     6.243    
+                         DSP48E1 (Setup_dsp48e1_CLK_A[0])
+                                                     -0.362     5.881    gen_horner[1].u_step/prod
+  -------------------------------------------------------------------
+                         required time                          5.881    
+                         arrival time                          -8.298    
+  -------------------------------------------------------------------
+                         slack                                 -2.417    
+
+
+
+

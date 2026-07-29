@@ -482,12 +482,9 @@ VL_ATTR_COLD void Vbf16_expe_cut___024root___stl_sequent__TOP__0(Vbf16_expe_cut_
     if (false && vlSelf) {}  // Prevent unused
     Vbf16_expe_cut__Syms* const __restrict vlSymsp VL_ATTR_UNUSED = vlSelf->vlSymsp;
     VL_DEBUG_IF(VL_DBG_MSGF("+    Vbf16_expe_cut___024root___stl_sequent__TOP__0\n"); );
-    // Init
-    SData/*8:0*/ bf16_expe_cut__DOT__base_count;
-    bf16_expe_cut__DOT__base_count = 0;
     // Body
     vlSelf->m_axis_tdata = vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
-        [3U];
+        [4U];
     vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt 
         = vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [0U];
@@ -497,12 +494,23 @@ VL_ATTR_COLD void Vbf16_expe_cut___024root___stl_sequent__TOP__0(Vbf16_expe_cut_
     vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt 
         = vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [2U];
-    vlSelf->bf16_expe_cut__DOT____VdfgTmp_hff4b4fa8__0 
-        = (((IData)(0xb8aa3bU) * (0x80U | (0x7fU & 
-                                           (vlSelf->bf16_expe_cut__DOT__s1_decomposed 
-                                            >> 5U)))) 
-           >> (0x1fU & ((IData)(0xeU) - (vlSelf->bf16_expe_cut__DOT__s1_decomposed 
-                                         >> 0xcU))));
+    vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt 
+        = vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [3U];
+    vlSelf->bf16_expe_cut__DOT____VdfgTmp_h0f01a197__0 
+        = (vlSelf->bf16_expe_cut__DOT__fe_prod >> (IData)(vlSelf->bf16_expe_cut__DOT__fe_shift));
+    vlSelf->bf16_expe_cut__DOT__base_count = (0x1ffU 
+                                              & ((IData)(0x1f4U) 
+                                                 + 
+                                                 (((IData)(0x80U) 
+                                                   - 
+                                                   (0x7fU 
+                                                    & ((IData)(vlSelf->bf16_expe_cut__DOT__s3_frac) 
+                                                       >> 9U))) 
+                                                  + (IData)(vlSelf->bf16_expe_cut__DOT__s3_cand_dev))));
+    vlSelf->bf16_expe_cut__DOT__ladder_count = (0x1ffU 
+                                                & ((IData)(vlSelf->bf16_expe_cut__DOT__s5_base_count) 
+                                                   + (IData)(vlSelf->bf16_expe_cut__DOT__s5_below_cut)));
     vlSelf->bf16_expe_cut__DOT__u_decompose__DOT__status_comb 
         = (((IData)(((0x7f80U == (0x7f80U & (IData)(vlSelf->s_axis_tdata))) 
                      & (0U != (0x7fU & (IData)(vlSelf->s_axis_tdata))))) 
@@ -519,39 +527,13 @@ VL_ATTR_COLD void Vbf16_expe_cut___024root___stl_sequent__TOP__0(Vbf16_expe_cut_
                                                     (0x7fffU 
                                                      & (IData)(vlSelf->s_axis_tdata)))))));
     vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_cut__DOT__gen_axi_pipelined__DOT__valid_sr) 
-                                   >> 7U));
-    bf16_expe_cut__DOT__base_count = (0x1ffU & ((IData)(0x1f4U) 
-                                                + (
-                                                   ((IData)(0x80U) 
-                                                    - 
-                                                    (0x7fU 
-                                                     & ((IData)(vlSelf->bf16_expe_cut__DOT__s3_frac) 
-                                                        >> 9U))) 
-                                                   + (IData)(vlSelf->bf16_expe_cut__DOT__s3_cand_dev))));
+                                   >> 0xbU));
     vlSelf->bf16_expe_cut__DOT__u_decompose__DOT__hidden_bit_comb 
         = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_cut__DOT__u_decompose__DOT__status_comb)))))) 
            && (1U & (~ ((IData)(vlSelf->bf16_expe_cut__DOT__u_decompose__DOT__status_comb) 
                         >> 1U))));
     vlSelf->s_axis_tready = (1U & ((~ (IData)(vlSelf->m_axis_tvalid)) 
                                    | (IData)(vlSelf->m_axis_tready)));
-    vlSelf->bf16_expe_cut__DOT__ladder_count = (0x1ffU 
-                                                & ((IData)(bf16_expe_cut__DOT__base_count) 
-                                                   + 
-                                                   (VL_GTS_III(9, 0x80U, (IData)(bf16_expe_cut__DOT__base_count)) 
-                                                    & VL_LTES_III(18, (IData)(vlSelf->bf16_expe_cut__DOT__s3_frac), 
-                                                                  (0x3ffffU 
-                                                                   & ((IData)(0x3eb02U) 
-                                                                      + 
-                                                                      (VL_SHIFTL_III(18,18,32, 
-                                                                                VL_EXTENDS_II(18,9, 
-                                                                                (0x1ffU 
-                                                                                & ((IData)(0x7fU) 
-                                                                                - (IData)(bf16_expe_cut__DOT__base_count)))), 9U) 
-                                                                       + 
-                                                                       vlSelf->bf16_expe_cut__DOT__u_cut_rom__DOT__rom
-                                                                       [
-                                                                       (0x7fU 
-                                                                        & (IData)(bf16_expe_cut__DOT__base_count))])))))));
 }
 
 VL_ATTR_COLD void Vbf16_expe_cut___024root___eval_stl(Vbf16_expe_cut___024root* vlSelf) {
@@ -647,6 +629,11 @@ VL_ATTR_COLD void Vbf16_expe_cut___024root___ctor_var_reset(Vbf16_expe_cut___024
     vlSelf->m_axis_tready = VL_RAND_RESET_I(1);
     vlSelf->bf16_expe_cut__DOT__s1_decomposed = VL_RAND_RESET_I(22);
     vlSelf->bf16_expe_cut__DOT__s2_eo_code = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_cut__DOT__fe_prod = VL_RAND_RESET_I(32);
+    vlSelf->bf16_expe_cut__DOT__fe_shift = VL_RAND_RESET_I(5);
+    vlSelf->bf16_expe_cut__DOT__fe_route = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_cut__DOT__fe_tail_addr = VL_RAND_RESET_I(4);
+    vlSelf->bf16_expe_cut__DOT__fe_eo_code = VL_RAND_RESET_I(2);
     vlSelf->bf16_expe_cut__DOT__s2_route = VL_RAND_RESET_I(2);
     vlSelf->bf16_expe_cut__DOT__s2_int_part = VL_RAND_RESET_I(9);
     vlSelf->bf16_expe_cut__DOT__s2_frac = VL_RAND_RESET_I(16);
@@ -657,10 +644,25 @@ VL_ATTR_COLD void Vbf16_expe_cut___024root___ctor_var_reset(Vbf16_expe_cut___024
     vlSelf->bf16_expe_cut__DOT__s3_route = VL_RAND_RESET_I(2);
     vlSelf->bf16_expe_cut__DOT__s3_int_part = VL_RAND_RESET_I(9);
     vlSelf->bf16_expe_cut__DOT__s3_frac = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_cut__DOT__base_count = VL_RAND_RESET_I(9);
+    vlSelf->bf16_expe_cut__DOT__s4_base_count = VL_RAND_RESET_I(9);
+    vlSelf->bf16_expe_cut__DOT__s4_cut_dev = VL_RAND_RESET_I(13);
+    vlSelf->bf16_expe_cut__DOT__s4_cut_sentinel = VL_RAND_RESET_I(1);
+    vlSelf->bf16_expe_cut__DOT__s4_frac = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_cut__DOT__s4_int_part = VL_RAND_RESET_I(9);
+    vlSelf->bf16_expe_cut__DOT__s4_eo_code = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_cut__DOT__s4_route = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_cut__DOT__s4_tail_data = VL_RAND_RESET_I(7);
     vlSelf->bf16_expe_cut__DOT__ladder_count = VL_RAND_RESET_I(9);
+    vlSelf->bf16_expe_cut__DOT__s5_below_cut = VL_RAND_RESET_I(1);
+    vlSelf->bf16_expe_cut__DOT__s5_base_count = VL_RAND_RESET_I(9);
+    vlSelf->bf16_expe_cut__DOT__s5_int_part = VL_RAND_RESET_I(9);
+    vlSelf->bf16_expe_cut__DOT__s5_eo_code = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_cut__DOT__s5_route = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_cut__DOT__s5_tail_data = VL_RAND_RESET_I(7);
     vlSelf->bf16_expe_cut__DOT__core_data = VL_RAND_RESET_I(16);
-    vlSelf->bf16_expe_cut__DOT__gen_axi_pipelined__DOT__valid_sr = VL_RAND_RESET_I(8);
-    vlSelf->bf16_expe_cut__DOT____VdfgTmp_hff4b4fa8__0 = 0;
+    vlSelf->bf16_expe_cut__DOT__gen_axi_pipelined__DOT__valid_sr = VL_RAND_RESET_I(12);
+    vlSelf->bf16_expe_cut__DOT____VdfgTmp_h0f01a197__0 = 0;
     vlSelf->bf16_expe_cut__DOT__u_decompose__DOT__status_comb = VL_RAND_RESET_I(4);
     vlSelf->bf16_expe_cut__DOT__u_decompose__DOT__hidden_bit_comb = VL_RAND_RESET_I(1);
     for (int __Vi0 = 0; __Vi0 < 256; ++__Vi0) {
@@ -672,12 +674,13 @@ VL_ATTR_COLD void Vbf16_expe_cut___024root___ctor_var_reset(Vbf16_expe_cut___024
     for (int __Vi0 = 0; __Vi0 < 128; ++__Vi0) {
         vlSelf->bf16_expe_cut__DOT__u_cut_rom__DOT__rom[__Vi0] = VL_RAND_RESET_I(13);
     }
-    for (int __Vi0 = 0; __Vi0 < 4; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 5; ++__Vi0) {
         vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[__Vi0] = VL_RAND_RESET_I(16);
     }
     vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->__Vtrigprevexpr___TOP__clk__0 = VL_RAND_RESET_I(1);
     vlSelf->__Vtrigprevexpr___TOP__rst_n__0 = VL_RAND_RESET_I(1);
 }

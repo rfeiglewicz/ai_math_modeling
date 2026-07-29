@@ -34,7 +34,23 @@ module bf16_expe_cut
     parameter bit REGISTER_STAGES = 1'b0,
     // Pad the output to this many pipeline stages so every core has the same
     // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
-    parameter int PIPE_TARGET     = UNIFIED_PIPE_DEPTH
+    parameter int PIPE_TARGET     = UNIFIED_PIPE_DEPTH,
+    // Retiming: 1 splits the final stage, which is otherwise one long serial
+    // chain -- candidate index -> base_count -> cut ROM -> cut_value ->
+    // compare -> ladder_count -> exponent. The register goes right after the
+    // ROM read. Bit-exact; costs one extra cycle of latency.
+    // Retiming: splits the final stage, which is otherwise one long serial
+    // chain -- candidate index -> base_count -> cut ROM -> cut_value ->
+    // compare -> ladder_count -> exponent.
+    //   1 - register after the cut ROM read
+    //   2 - additionally register after the cut comparison, leaving only the
+    //       ladder increment and the exponent arithmetic in the last stage
+    // Bit-exact; costs RETIME_CUT cycles of latency.
+    parameter int RETIME_CUT      = 2,
+    // Retiming: 1 splits the front end, which is otherwise a constant multiply
+    // followed by a variable shift in a single stage -- the longest path in
+    // the core. Bit-exact; costs one extra cycle of latency.
+    parameter int RETIME_FE       = 1
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -45,7 +61,9 @@ module bf16_expe_cut
     output logic        m_axis_tvalid,
     input  logic        m_axis_tready
 );
-    localparam int CORE_DEPTH = REGISTER_STAGES ? 4 : 0;
+    localparam int RCUT       = REGISTER_STAGES ? RETIME_CUT : 0;
+    localparam int RFE        = REGISTER_STAGES ? RETIME_FE  : 0;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? (4 + RCUT + RFE) : 0;
     localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
                                 ? PIPE_TARGET - CORE_DEPTH : 0;
     localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
@@ -127,7 +145,47 @@ module bf16_expe_cut
     assign shift_signed = $signed(9'(LOG2E_FRAC_BITS + 7 - FRAC_BITS))
                         - $signed(s1_decomposed.exponent);
     assign shift_comb   = shift_signed[4:0];   // in [7, 23] for exp in [-9, 7]
-    assign aligned_comb = ALIGNED_W'(prod_comb >> shift_comb);
+
+    // -------------------------------------------------------------------------
+    // Optional retiming register between the constant multiply and the shift.
+    // The control signals derived from the same input have to ride along.
+    // -------------------------------------------------------------------------
+    logic [PROD_W-1:0] fe_prod;
+    logic [4:0]        fe_shift;
+    route_t            fe_route;
+    logic [3:0]        fe_tail_addr;
+    early_out_t        fe_eo_code;
+
+    logic [3:0] tail_addr_pre;
+    assign tail_addr_pre = 4'(s1_decomposed.mantissa - 7'(TAIL_MANT_LO));
+
+    generate
+        if (RFE >= 1) begin : gen_fe_regs
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    fe_prod      <= '0;
+                    fe_shift     <= '0;
+                    fe_route     <= ROUTE_ZERO;
+                    fe_tail_addr <= '0;
+                    fe_eo_code   <= EO_PLUS_ONE;
+                end else if (pipe_en) begin
+                    fe_prod      <= prod_comb;
+                    fe_shift     <= shift_comb;
+                    fe_route     <= route_comb;
+                    fe_tail_addr <= tail_addr_pre;
+                    fe_eo_code   <= s2_eo_code;
+                end
+            end
+        end else begin : gen_fe_wires
+            assign fe_prod      = prod_comb;
+            assign fe_shift     = shift_comb;
+            assign fe_route     = route_comb;
+            assign fe_tail_addr = tail_addr_pre;
+            assign fe_eo_code   = s2_eo_code;
+        end
+    endgenerate
+
+    assign aligned_comb = ALIGNED_W'(fe_prod >> fe_shift);
 
     logic [INT_W-1:0]  int_part_comb;
     logic [FRAC_BITS-1:0] frac_comb;
@@ -135,7 +193,7 @@ module bf16_expe_cut
     assign frac_comb     = aligned_comb[FRAC_BITS-1:0];
 
     logic [3:0] tail_addr_comb;
-    assign tail_addr_comb = 4'(s1_decomposed.mantissa - 7'(TAIL_MANT_LO));
+    assign tail_addr_comb = fe_tail_addr;
 
     route_t               s2_route;
     logic [INT_W-1:0]     s2_int_part;
@@ -151,14 +209,14 @@ module bf16_expe_cut
                     s2_frac      <= '0;
                     s2_tail_addr <= '0;
                 end else if (pipe_en) begin
-                    s2_route     <= route_comb;
+                    s2_route     <= fe_route;
                     s2_int_part  <= int_part_comb;
                     s2_frac      <= frac_comb;
                     s2_tail_addr <= tail_addr_comb;
                 end
             end
         end else begin : gen_stage2_wires
-            assign s2_route     = route_comb;
+            assign s2_route     = fe_route;
             assign s2_int_part  = int_part_comb;
             assign s2_frac      = frac_comb;
             assign s2_tail_addr = tail_addr_comb;
@@ -196,14 +254,14 @@ module bf16_expe_cut
                     s3_int_part <= '0;
                     s3_frac     <= '0;
                 end else if (pipe_en) begin
-                    s3_eo_code  <= s2_eo_code;
+                    s3_eo_code  <= fe_eo_code;
                     s3_route    <= s2_route;
                     s3_int_part <= s2_int_part;
                     s3_frac     <= s2_frac;
                 end
             end
         end else begin : gen_stage3_align_wires
-            assign s3_eo_code  = s2_eo_code;
+            assign s3_eo_code  = fe_eo_code;
             assign s3_route    = s2_route;
             assign s3_int_part = s2_int_part;
             assign s3_frac     = s2_frac;
@@ -236,24 +294,113 @@ module bf16_expe_cut
         .clk(clk), .pipe_en(pipe_en), .addr(cut_addr), .data(cut_dev)
     );
 
+    // -------------------------------------------------------------------------
+    // Optional retiming register, placed between the cut ROM read and the
+    // comparison that follows it. Everything the tail of the stage still needs
+    // rides along.
+    // -------------------------------------------------------------------------
+    logic signed [8:0]        s4_base_count;
+    logic [CUT_DEV_BITS-1:0]  s4_cut_dev;
+    logic                     s4_cut_sentinel;
+    logic [FRAC_BITS-1:0]     s4_frac;
+    logic [INT_W-1:0]         s4_int_part;
+    early_out_t               s4_eo_code;
+    route_t                   s4_route;
+    logic [6:0]               s4_tail_data;
+
+    generate
+        if (RCUT >= 1) begin : gen_stage4_regs
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    s4_base_count   <= '0;
+                    s4_cut_dev      <= '0;
+                    s4_cut_sentinel <= 1'b0;
+                    s4_frac         <= '0;
+                    s4_int_part     <= '0;
+                    s4_eo_code      <= EO_PLUS_ONE;
+                    s4_route        <= ROUTE_ZERO;
+                    s4_tail_data    <= '0;
+                end else if (pipe_en) begin
+                    s4_base_count   <= base_count;
+                    s4_cut_dev      <= cut_dev;
+                    s4_cut_sentinel <= cut_sentinel;
+                    s4_frac         <= s3_frac;
+                    s4_int_part     <= s3_int_part;
+                    s4_eo_code      <= s3_eo_code;
+                    s4_route        <= s3_route;
+                    s4_tail_data    <= s3_tail_data;
+                end
+            end
+        end else begin : gen_stage4_wires
+            assign s4_base_count   = base_count;
+            assign s4_cut_dev      = cut_dev;
+            assign s4_cut_sentinel = cut_sentinel;
+            assign s4_frac         = s3_frac;
+            assign s4_int_part     = s3_int_part;
+            assign s4_eo_code      = s3_eo_code;
+            assign s4_route        = s3_route;
+            assign s4_tail_data    = s3_tail_data;
+        end
+    endgenerate
+
     // cut = ((128-k) << (FRAC_BITS-7)) + CUT_DEV_BIAS + cut_dev,  128-k = 127-base
     logic signed [CUT_W-1:0] cut_linear;
-    assign cut_linear = $signed(CUT_W'($signed(9'sd127 - base_count))) <<< (FRAC_BITS - 7);
+    assign cut_linear = $signed(CUT_W'($signed(9'sd127 - s4_base_count))) <<< (FRAC_BITS - 7);
     assign cut_value  = cut_linear + $signed(CUT_W'(CUT_DEV_BIAS))
-                      + $signed({{(CUT_W-CUT_DEV_BITS){1'b0}}, cut_dev});
+                      + $signed({{(CUT_W-CUT_DEV_BITS){1'b0}}, s4_cut_dev});
 
     logic                below_cut;
     logic signed [8:0]   ladder_count;
-    assign below_cut    = !cut_sentinel
-                        && ($signed({{(CUT_W-FRAC_BITS){1'b0}}, s3_frac}) <= cut_value);
-    assign ladder_count = base_count + 9'(below_cut);
+    assign below_cut    = !s4_cut_sentinel
+                        && ($signed({{(CUT_W-FRAC_BITS){1'b0}}, s4_frac}) <= cut_value);
+
+    // -------------------------------------------------------------------------
+    // Optional second retiming register, after the cut comparison.
+    // -------------------------------------------------------------------------
+    logic                s5_below_cut;
+    logic signed [8:0]   s5_base_count;
+    logic [INT_W-1:0]    s5_int_part;
+    early_out_t          s5_eo_code;
+    route_t              s5_route;
+    logic [6:0]          s5_tail_data;
+
+    generate
+        if (RCUT >= 2) begin : gen_stage5_regs
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    s5_below_cut  <= 1'b0;
+                    s5_base_count <= '0;
+                    s5_int_part   <= '0;
+                    s5_eo_code    <= EO_PLUS_ONE;
+                    s5_route      <= ROUTE_ZERO;
+                    s5_tail_data  <= '0;
+                end else if (pipe_en) begin
+                    s5_below_cut  <= below_cut;
+                    s5_base_count <= s4_base_count;
+                    s5_int_part   <= s4_int_part;
+                    s5_eo_code    <= s4_eo_code;
+                    s5_route      <= s4_route;
+                    s5_tail_data  <= s4_tail_data;
+                end
+            end
+        end else begin : gen_stage5_wires
+            assign s5_below_cut  = below_cut;
+            assign s5_base_count = s4_base_count;
+            assign s5_int_part   = s4_int_part;
+            assign s5_eo_code    = s4_eo_code;
+            assign s5_route      = s4_route;
+            assign s5_tail_data  = s4_tail_data;
+        end
+    endgenerate
+
+    assign ladder_count = s5_base_count + 9'(s5_below_cut);
 
     // exponent = -I-1, biased = 127 + (-I-1) = 126 - I.
     // count == 128 means the mantissa rounded up to 2.0: mantissa 0, exponent +1.
     // count[6:0] is already 0 in that case, so only the exponent needs the carry.
     logic [7:0] biased_exp;
     logic [6:0] out_mantissa;
-    assign biased_exp   = 8'd126 - 8'(s3_int_part) + 8'(ladder_count[7]);
+    assign biased_exp   = 8'd126 - 8'(s5_int_part) + 8'(ladder_count[7]);
     assign out_mantissa = ladder_count[6:0];
 
     logic [15:0] ladder_result;
@@ -264,14 +411,14 @@ module bf16_expe_cut
     // -------------------------------------------------------------------------
     logic [15:0] result_comb;
     always_comb begin
-        unique case (s3_eo_code)
+        unique case (s5_eo_code)
             EO_QNAN:      result_comb = BF16_QNAN;
             EO_PLUS_ONE:  result_comb = BF16_PLUS_ONE;
             EO_PLUS_ZERO: result_comb = BF16_PLUS_ZERO;
             default: begin
-                unique case (s3_route)
+                unique case (s5_route)
                     ROUTE_LADDER: result_comb = ladder_result;
-                    ROUTE_TAIL:   result_comb = {9'b0, s3_tail_data};
+                    ROUTE_TAIL:   result_comb = {9'b0, s5_tail_data};
                     default:      result_comb = 16'h0000;
                 endcase
             end

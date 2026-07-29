@@ -20,7 +20,12 @@ module bf16_normalize
     import bf16_exp2_pkg::*;
 #(
     parameter bit REGISTER_OUTPUT = 1'b0,
-    parameter bit RESET_DATAPATH  = 1'b1
+    parameter bit RESET_DATAPATH  = 1'b1,
+    // Retiming: 1 inserts a register between the priority encoder and the
+    // barrel shifter. Those two are the deepest logic in the whole exp2 core
+    // and there is no reason for them to share a stage. Bit-exact; costs one
+    // extra cycle of latency.
+    parameter int EXTRA_STAGES    = 0
 )(
     input  logic                      clk,
     input  logic                      rst_n,
@@ -31,6 +36,8 @@ module bf16_normalize
 );
 
     logic signed [8:0]   msb_idx_comb;
+    logic signed [8:0]   msb_idx_s;
+    logic [CALC_W-1:0]   res_s;
     logic signed [8:0]   shift_amt;
     logic [CALC_W-1:0]   shifted_res;
     logic [POLY_OUT_W-1:0] poly_mant_comb;
@@ -47,14 +54,43 @@ module bf16_normalize
         end
     end
 
+    // -------------------------------------------------------------------------
+    // Retiming register: the encoder result and the value it describes cross
+    // into the next stage together, so the shifter starts from a register
+    // instead of from the tail of the encoder.
+    // -------------------------------------------------------------------------
+    generate
+        if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_split_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    msb_idx_s <= '0;
+                    res_s     <= '0;
+                end else if (pipe_en) begin
+                    msb_idx_s <= msb_idx_comb;
+                    res_s     <= unnormalized_res;
+                end
+            end
+        end else if (EXTRA_STAGES >= 1) begin : gen_split
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
+                    msb_idx_s <= msb_idx_comb;
+                    res_s     <= unnormalized_res;
+                end
+            end
+        end else begin : gen_split_wire
+            assign msb_idx_s = msb_idx_comb;
+            assign res_s     = unnormalized_res;
+        end
+    endgenerate
+
     // Barrel shift and slice
     always_comb begin
-        shift_amt   = 9'(signed'(CALC_W - 1)) - msb_idx_comb;
-        shifted_res = unnormalized_res << shift_amt;
+        shift_amt   = 9'(signed'(CALC_W - 1)) - msb_idx_s;
+        shifted_res = res_s << shift_amt;
         // Extract the POLY_OUT_W MSBs
         poly_mant_comb = shifted_res[CALC_W-1 : CALC_W-POLY_OUT_W];
         // Exponent relative to 1.POLY_OUT_F format
-        poly_exp_comb  = msb_idx_comb - 9'(signed'(POLY_OUT_F));
+        poly_exp_comb  = msb_idx_s - 9'(signed'(POLY_OUT_F));
     end
 
     generate
