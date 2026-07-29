@@ -240,6 +240,39 @@ sweep_exp2:
 	$(VIVADO) -mode batch -nojournal -nolog -source scripts/sweep_exp2_configs.tcl
 
 # =========================================================================
+# Porownanie wszystkich implementacji obok siebie
+# =========================================================================
+.PHONY: compare_cores compare_cores_verify compare_all
+
+# Synteza wszystkich rdzeni w jednym przebiegu -> jedna tabela zasobow.
+compare_cores: gen_expe_lut_rom gen_expe_hybrid_tables gen_expe_cut_tables gen_expe_poly4_tables
+	$(VIVADO) -mode batch -nojournal -nolog -source scripts/compare_all_cores.tcl
+
+# Weryfikacja funkcjonalna wszystkich rdzeni (Verilator, wyczerpujaca).
+# Rdzenie maja rozne testbenche, wiec podsumowanie filtrujemy po obu formatach:
+# "checked=/OVERALL" (exp2, lut) oraz "Checked:/Mismatches:" (hybrid, cut, poly4).
+CMP_SUMMARY = grep -E 'checked=|OVERALL|^Checked:|^Mismatches:|^PASS|^FAIL' || true
+
+compare_cores_verify:
+	@echo "=================== exp2 baseline ==================="
+	@$(MAKE) --no-print-directory rtl_verify_pipelined     | $(CMP_SUMMARY)
+	@echo "=================== exp2 optimised =================="
+	@$(MAKE) --no-print-directory rtl_opt_verify_pipelined | $(CMP_SUMMARY)
+	@echo "=================== expe full LUT ==================="
+	@$(MAKE) --no-print-directory rtl_expe_lut_verify_pipelined    | $(CMP_SUMMARY)
+	@echo "=================== expe hybrid ====================="
+	@$(MAKE) --no-print-directory rtl_expe_hybrid_verify_pipelined | $(CMP_SUMMARY)
+	@echo "=================== expe cut ladder ================="
+	@$(MAKE) --no-print-directory rtl_expe_cut_verify_pipelined    | $(CMP_SUMMARY)
+	@echo "=================== expe poly4 ======================"
+	@$(MAKE) --no-print-directory rtl_expe_poly4_verify_pipelined  | $(CMP_SUMMARY)
+	@echo "=================== expe poly4 DSP =================="
+	@$(MAKE) --no-print-directory rtl_expe_poly4_dsp_verify_pipelined | $(CMP_SUMMARY)
+
+# Weryfikacja + dokladnosc ULP + synteza.
+compare_all: compare_cores_verify ulp_compare compare_cores
+
+# =========================================================================
 # RTL Verification -- full LUT exp(x) model (bf16_expe_lut)
 # =========================================================================
 LUT_TB       = tests/rtl_expe_lut_compliance_test.cpp
@@ -253,7 +286,7 @@ LUT_RTL_SRC  = $(RTL_DIR)/bf16_exp2_pkg.sv \
 
 .PHONY: gen_expe_lut_rom rtl_expe_lut_verify rtl_expe_lut_verify_pipelined
 
-gen_expe_lut_rom:
+gen_expe_lut_rom: | $(BUILD_DIR)
 	@echo "Generating bf16_expe_lut_rom.sv from LUT table ..."
 	$(CXX) $(CXXFLAGS) -Isrc/approximations tests/gen_bf16_expe_lut_rom.cpp \
 	    -o $(BUILD_DIR)/gen_expe_lut_rom
@@ -289,7 +322,7 @@ HYBRID_RTL_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
 .PHONY: gen_expe_hybrid_tables expe_hybrid_test \
         rtl_expe_hybrid_verify rtl_expe_hybrid_verify_pipelined
 
-gen_expe_hybrid_tables:
+gen_expe_hybrid_tables: | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) tests/gen_bf16_expe_hybrid_tables.cpp \
 	    -o $(BUILD_DIR)/gen_bf16_expe_hybrid_tables
@@ -320,7 +353,7 @@ rtl_expe_hybrid_verify_pipelined:
 # =========================================================================
 .PHONY: gen_expe_cut_tables expe_cut_test gen_expe_cut_approx
 
-gen_expe_cut_tables:
+gen_expe_cut_tables: | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 tests/gen_bf16_expe_cut_tables.cpp \
 	    -o $(BUILD_DIR)/gen_bf16_expe_cut_tables
@@ -391,7 +424,7 @@ rtl_expe_cut_axi_test: gen_expe_cut_tables
 # =========================================================================
 .PHONY: gen_expe_poly4_tables expe_poly4_test gen_expe_poly4_approx
 
-gen_expe_poly4_tables:
+gen_expe_poly4_tables: | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 tests/gen_bf16_expe_poly4_tables.cpp \
 	    -o $(BUILD_DIR)/gen_bf16_expe_poly4_tables

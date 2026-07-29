@@ -1,0 +1,35 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Jul 29 18:21:06 2026
+| Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
+| Command      : report_utilization -hierarchical -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/util_exp2_baseline_hier.rpt
+| Design       : bf16_exp2
+| Device       : xc7a200tfbg484-1
+| Speed File   : -1
+| Design State : Synthesized
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++--------------------+--------------------+------------+------------+---------+------+-----+--------+--------+------------+
+|      Instance      |       Module       | Total LUTs | Logic LUTs | LUTRAMs | SRLs | FFs | RAMB36 | RAMB18 | DSP Blocks |
++--------------------+--------------------+------------+------------+---------+------+-----+--------+--------+------------+
+| bf16_exp2          |              (top) |        885 |        883 |       0 |    2 | 248 |      0 |      2 |          4 |
+|   (bf16_exp2)      |              (top) |          4 |          2 |       0 |    2 |  42 |      0 |      0 |          0 |
+|   u_lin_approx     | bf16_linear_approx |        357 |        357 |       0 |    0 |  38 |      0 |      2 |          3 |
+|     (u_lin_approx) | bf16_linear_approx |        128 |        128 |       0 |    0 |  38 |      0 |      0 |          3 |
+|     u_coeff_rom    |     bf16_coeff_rom |        229 |        229 |       0 |    0 |   0 |      0 |      2 |          0 |
+|   u_log2e_mult     |    bf16_log2e_mult |        236 |        236 |       0 |    0 |   0 |      0 |      0 |          1 |
+|   u_normalize      |     bf16_normalize |         85 |         85 |       0 |    0 |  66 |      0 |      0 |          0 |
+|   u_round          |         bf16_round |        164 |        164 |       0 |    0 |  18 |      0 |      0 |          0 |
++--------------------+--------------------+------------+------------+---------+------+-----+--------+--------+------------+
+
+

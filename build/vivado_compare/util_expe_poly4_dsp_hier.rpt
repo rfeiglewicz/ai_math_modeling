@@ -1,0 +1,29 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Jul 29 18:24:18 2026
+| Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
+| Command      : report_utilization -hierarchical -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/util_expe_poly4_dsp_hier.rpt
+| Design       : bf16_expe_poly4
+| Device       : xc7a200tfbg484-1
+| Speed File   : -1
+| Design State : Synthesized
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++---------------------+--------+------------+------------+---------+------+-----+--------+--------+------------+
+|       Instance      | Module | Total LUTs | Logic LUTs | LUTRAMs | SRLs | FFs | RAMB36 | RAMB18 | DSP Blocks |
++---------------------+--------+------------+------------+---------+------+-----+--------+--------+------------+
+| bf16_expe_poly4     |  (top) |         91 |         72 |       0 |   19 | 105 |      0 |      0 |          6 |
+|   (bf16_expe_poly4) |  (top) |         23 |          4 |       0 |   19 |  86 |      0 |      0 |          2 |
++---------------------+--------+------------+------------+---------+------+-----+--------+--------+------------+
+
+
