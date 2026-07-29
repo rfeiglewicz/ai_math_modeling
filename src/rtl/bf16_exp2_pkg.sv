@@ -120,16 +120,16 @@ package bf16_exp2_pkg;
     // Natural depths with the default retiming applied:
     //   expe full-lut     4
     //   expe hybrid       4
-    //   expe cut-ladder   5   (4 + RETIME_CUT)
-    //   expe poly4       11   (3 + 4 Horner steps x 2)
-    //   expe poly4 dsp   12   (3 + 1 front-end + 4 Horner steps x 2)
-    //   bf16_exp2        12   (7 + RETIME_LOG2E/APPROX/NORM/ROUND)
+    //   expe cut-ladder   7   (4 + RETIME_CUT + RETIME_FE)
+    //   expe poly4       13   (3 + 2 front-end + 4 Horner steps x 2)
+    //   expe poly4 dsp   13   (same, the DSP front end shares the count)
+    //   bf16_exp2        16   (7 + LOG2E 2 + SHIFT 1 + APPROX 3 + NORM 1 + ROUND 2)
     //
     // The retiming registers are not padding: they sit inside the arithmetic
-    // and are what lets the cores clock roughly two to three times faster.
+    // and are what lets the cores clock roughly three times faster.
     // Padding only makes up the difference at the output.
     // =========================================================================
-    localparam int UNIFIED_PIPE_DEPTH = 12;
+    localparam int UNIFIED_PIPE_DEPTH = 16;
 
     // =========================================================================
     // Decomposed BF16 status flags

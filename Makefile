@@ -147,7 +147,7 @@ rtl_verify_pipelined:
 	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_pl $(VER_INC) $(RTL_SRC) \
 	    --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_pl -f Vbf16_exp2.mk Vbf16_exp2
-	./obj_dir_pl/Vbf16_exp2 --latency 12
+	./obj_dir_pl/Vbf16_exp2 --latency 16
 
 rtl_axi_test:
 	@echo "Building AXI-Stream protocol test (REGISTER_STAGES=1) ..."
@@ -175,7 +175,7 @@ rtl_dsp_shift_verify_pipelined:
 	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 -GDSP_SHIFT=1 -Mdir obj_dir_dsps_pl \
 	    $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_dsps_pl -f Vbf16_exp2.mk Vbf16_exp2
-	./obj_dir_dsps_pl/Vbf16_exp2 --latency 12
+	./obj_dir_dsps_pl/Vbf16_exp2 --latency 16
 
 rtl_dsp_shift_axi_test:
 	@echo "Building AXI-Stream protocol test (REGISTER_STAGES=1 DSP_SHIFT=1) ..."
@@ -225,7 +225,7 @@ rtl_opt_verify_pipelined:
 	$(VERILATOR) $(VER_FLAGS) -GREGISTER_STAGES=1 $(OPT_GENERICS) -Mdir obj_dir_opt_pl \
 	    $(VER_INC) $(RTL_SRC) --exe $(RTL_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_opt_pl -f Vbf16_exp2.mk Vbf16_exp2
-	./obj_dir_opt_pl/Vbf16_exp2 --latency 12
+	./obj_dir_opt_pl/Vbf16_exp2 --latency 16
 
 rtl_opt_axi_test:
 	@echo "Building AXI-Stream protocol test (optimised) ..."
@@ -347,7 +347,7 @@ rtl_expe_lut_verify_pipelined:
 	$(VERILATOR) $(LUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_lut_pl $(VER_INC) $(LUT_RTL_SRC) \
 	    --exe $(LUT_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_lut_pl -f Vbf16_expe_lut.mk Vbf16_expe_lut
-	./obj_dir_lut_pl/Vbf16_expe_lut --latency 12
+	./obj_dir_lut_pl/Vbf16_expe_lut --latency 16
 
 # =========================================================================
 # Hybrid compressed-table exp(x): sparse thresholds + dense ROM
@@ -390,7 +390,7 @@ rtl_expe_hybrid_verify_pipelined:
 	$(VERILATOR) $(HYBRID_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_hybrid_pl \
 	    $(VER_INC) $(HYBRID_RTL_SRC) --exe $(HYBRID_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_hybrid_pl -f Vbf16_expe_hybrid.mk Vbf16_expe_hybrid
-	./obj_dir_hybrid_pl/Vbf16_expe_hybrid --latency 12
+	./obj_dir_hybrid_pl/Vbf16_expe_hybrid --latency 16
 
 # =========================================================================
 # Cut-point ladder exp(x): shared 2^-f ladder + candidate ROM
@@ -450,7 +450,7 @@ rtl_expe_cut_verify_pipelined: gen_expe_cut_tables
 	$(VERILATOR) $(CUT_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_cut_pl \
 	    $(VER_INC) $(CUT_RTL_SRC) --exe $(CUT_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_cut_pl -f Vbf16_expe_cut.mk Vbf16_expe_cut
-	./obj_dir_cut_pl/Vbf16_expe_cut --latency 12
+	./obj_dir_cut_pl/Vbf16_expe_cut --latency 16
 
 rtl_expe_cut_all: rtl_expe_cut_verify rtl_expe_cut_verify_pipelined rtl_expe_cut_axi_test
 
@@ -516,7 +516,7 @@ rtl_expe_poly4_verify_pipelined: gen_expe_poly4_tables
 	$(VERILATOR) $(POLY4_VER_FLAGS) -GREGISTER_STAGES=1 -Mdir obj_dir_poly4_pl \
 	    $(VER_INC) $(POLY4_RTL_SRC) --exe $(POLY4_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_poly4_pl -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
-	./obj_dir_poly4_pl/Vbf16_expe_poly4 --latency 12
+	./obj_dir_poly4_pl/Vbf16_expe_poly4 --latency 16
 
 rtl_expe_poly4_axi_test: gen_expe_poly4_tables
 	@echo "Building degree-4 AXI-Stream protocol test (REGISTER_STAGES=1) ..."
@@ -547,7 +547,7 @@ rtl_expe_poly4_dsp_verify_pipelined: gen_expe_poly4_tables
 	    -Mdir obj_dir_poly4_dsp_pl $(VER_INC) $(POLY4_RTL_SRC) \
 	    --exe $(POLY4_TB) $(VER_CFLAGS)
 	make -j -C obj_dir_poly4_dsp_pl -f Vbf16_expe_poly4.mk Vbf16_expe_poly4
-	./obj_dir_poly4_dsp_pl/Vbf16_expe_poly4 --latency 12
+	./obj_dir_poly4_dsp_pl/Vbf16_expe_poly4 --latency 16
 
 rtl_expe_poly4_dsp_axi_test: gen_expe_poly4_tables
 	@echo "Building DSP front-end AXI-Stream protocol test ..."

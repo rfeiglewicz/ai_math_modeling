@@ -139,10 +139,15 @@ module bf16_expe_poly4
     // Retiming: extra register per Horner step (DSP48E1 MREG). Bit-exact,
     // costs DEGREE extra cycles of latency in total.
     parameter int RETIME_MULT      = 1,
-    // Retiming for the fabric front end: splits the constant multiply from the
-    // alignment shift. The DSP front end already has this register (see
-    // FE_EXTRA), which is most of why it clocks faster. Bit-exact.
-    parameter int RETIME_FE        = 1
+    // Retiming for the front end:
+    //   1 splits the constant multiply from the alignment shift. The DSP front
+    //     end already has this register (see FE_EXTRA), which is most of why it
+    //     clocks faster.
+    //   2 additionally cuts between the alignment shift and the first Horner
+    //     multiply, which Vivado otherwise merges by absorbing the stage-2
+    //     register into the DSP A port.
+    // Bit-exact; each level costs one cycle.
+    parameter int RETIME_FE        = 2
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -157,14 +162,16 @@ module bf16_expe_poly4
     // DSP one needs it because the one-hot scaling and the wide multiply cannot
     // share a stage, the fabric one because the CSD tree plus barrel shifter is
     // otherwise the longest path in the core.
-    localparam int FE_EXTRA = (REGISTER_STAGES && (DSP_FRONTEND || RETIME_FE)) ? 1 : 0;
+    localparam int FE_EXTRA  = (REGISTER_STAGES && (DSP_FRONTEND || RETIME_FE >= 1)) ? 1 : 0;
+    localparam bit FE_STAGE2 = (REGISTER_STAGES && RETIME_FE >= 2);
+    localparam int FE_DEPTH  = FE_EXTRA + (FE_STAGE2 ? 1 : 0);
 
     // decompose + align + DEGREE Horner steps + output register.
     // With RETIME_MULT each Horner step occupies STEP_DEPTH stages instead of 1.
     localparam int MSTG       = REGISTER_STAGES ? RETIME_MULT : 0;
     localparam int STEP_DEPTH = REGISTER_STAGES ? (1 + MSTG) : 1;
     localparam int CTRL_LEN   = DEGREE * STEP_DEPTH;
-    localparam int CORE_DEPTH = REGISTER_STAGES ? (3 + FE_EXTRA + CTRL_LEN) : 0;
+    localparam int CORE_DEPTH = REGISTER_STAGES ? (3 + FE_DEPTH + CTRL_LEN) : 0;
     localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
                                 ? PIPE_TARGET - CORE_DEPTH : 0;
     localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
@@ -303,9 +310,13 @@ module bf16_expe_poly4
     localparam int OUT_SHIFT = 15;
 
     // Everything below is valid in the same cycle as fe_aligned.
+    logic [ALIGNED_W-1:0] fe_aligned_raw;
     logic [ALIGNED_W-1:0] fe_aligned;
+    route_t               fe_route_raw;
     route_t               fe_route;
+    logic [3:0]           fe_tail_addr_raw;
     logic [3:0]           fe_tail_addr;
+    early_out_t           fe_eo_raw;
     early_out_t           fe_eo;
 
     generate
@@ -369,10 +380,10 @@ module bf16_expe_poly4
         (* use_dsp = "yes" *) logic [SCALED_W-1:0] scaled_comb;
         assign scaled_comb = fe1_t7 * fe1_onehot;
 
-        assign fe_aligned   = scaled_comb[OUT_SHIFT +: ALIGNED_W];
-        assign fe_route     = fe1_route;
-        assign fe_tail_addr = fe1_tail;
-        assign fe_eo        = fe1_eo;
+        assign fe_aligned_raw   = scaled_comb[OUT_SHIFT +: ALIGNED_W];
+        assign fe_route_raw     = fe1_route;
+        assign fe_tail_addr_raw = fe1_tail;
+        assign fe_eo_raw        = fe1_eo;
     end else begin : gen_frontend_barrel
         // One operand is a constant, so synthesis maps this to a CSD adder tree
         // rather than a DSP block.
@@ -431,11 +442,64 @@ module bf16_expe_poly4
             assign fe1_eo    = eo_comb;
         end
 
-        assign fe_aligned   = ALIGNED_W'(fe1_prod >> fe1_shift);
-        assign fe_route     = fe1_route;
-        assign fe_tail_addr = fe1_tail;
-        assign fe_eo        = fe1_eo;
+        assign fe_aligned_raw   = ALIGNED_W'(fe1_prod >> fe1_shift);
+        assign fe_route_raw     = fe1_route;
+        assign fe_tail_addr_raw = fe1_tail;
+        assign fe_eo_raw        = fe1_eo;
     end
+    endgenerate
+
+    // -------------------------------------------------------------------------
+    // RETIME_FE >= 2: cut between the alignment shift and the first Horner DSP.
+    //
+    // The s2_* registers below already sit here, but Vivado packs them into the
+    // multiplier's A input register, which leaves the shift muxes hanging
+    // straight off the front-end register: measured 3 LUT levels plus routing,
+    // 6.09 ns, and that was the whole core's critical path. dont_touch keeps
+    // one copy in fabric so the shift gets a stage of its own.
+    // -------------------------------------------------------------------------
+    generate
+        if (FE_STAGE2) begin : gen_fe2_reg
+            (* dont_touch = "true" *) logic [ALIGNED_W-1:0] fe2_aligned;
+            route_t     fe2_route;
+            logic [3:0] fe2_tail;
+            early_out_t fe2_eo;
+
+            if (RESET_DATAPATH) begin : gen_rst
+                always_ff @(posedge clk or negedge rst_n) begin
+                    if (!rst_n) begin
+                        fe2_aligned <= '0;
+                        fe2_route   <= ROUTE_ZERO;
+                        fe2_tail    <= '0;
+                        fe2_eo      <= EO_PLUS_ONE;
+                    end else if (pipe_en) begin
+                        fe2_aligned <= fe_aligned_raw;
+                        fe2_route   <= fe_route_raw;
+                        fe2_tail    <= fe_tail_addr_raw;
+                        fe2_eo      <= fe_eo_raw;
+                    end
+                end
+            end else begin : gen_nrst
+                always_ff @(posedge clk) begin
+                    if (pipe_en) begin
+                        fe2_aligned <= fe_aligned_raw;
+                        fe2_route   <= fe_route_raw;
+                        fe2_tail    <= fe_tail_addr_raw;
+                        fe2_eo      <= fe_eo_raw;
+                    end
+                end
+            end
+
+            assign fe_aligned   = fe2_aligned;
+            assign fe_route     = fe2_route;
+            assign fe_tail_addr = fe2_tail;
+            assign fe_eo        = fe2_eo;
+        end else begin : gen_fe2_wire
+            assign fe_aligned   = fe_aligned_raw;
+            assign fe_route     = fe_route_raw;
+            assign fe_tail_addr = fe_tail_addr_raw;
+            assign fe_eo        = fe_eo_raw;
+        end
     endgenerate
 
     logic [INT_W-1:0]     int_part_comb;

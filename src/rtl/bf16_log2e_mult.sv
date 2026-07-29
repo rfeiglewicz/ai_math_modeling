@@ -27,8 +27,18 @@ module bf16_log2e_mult
     parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 29 = no rounding
     parameter bit REGISTER_OUTPUT = 1'b0,
     parameter bit RESET_DATAPATH  = 1'b1,
-    // Retiming: 1 inserts a register between the multiply and the RNE
-    // rounding adder. Bit-exact; costs one extra cycle of latency.
+    // Retiming:
+    //   1 inserts a register between the multiply and the RNE rounding adder.
+    //   2 additionally registers the rounded/muxed result.
+    //
+    // Level 2 exists because REGISTER_OUTPUT alone is not enough: the consumer
+    // (bf16_unified_shift) starts with a DSP multiply, so Vivado absorbs the
+    // output register into that DSP's BREG and the RNE adder ends up sharing a
+    // stage with the multiply Tco on one side and the DSP setup on the other.
+    // With two registers here Vivado can absorb one into BREG and still keep a
+    // fabric register directly behind the adder.
+    //
+    // Bit-exact; each level costs one extra cycle of latency.
     parameter int EXTRA_STAGES    = 0
 )(
     input  logic                                   clk,
@@ -55,6 +65,7 @@ module bf16_log2e_mult
     logic [MANT_SRC_W-1:0]  mant_src_d;
     logic                   base2_d;
     logic [MANT_MULT_W-1:0] mant_mult_rne;
+    logic [MANT_MULT_W-1:0] mant_out_raw;
     logic [MANT_MULT_W-1:0] mant_out_comb;
 
     // Product: mant_src (1.7) * log2e (1.22) = 2.29 = 31 bits
@@ -136,10 +147,39 @@ module bf16_log2e_mult
 
     always_comb begin
         if (base2_d)
-            mant_out_comb = MANT_MULT_W'({mant_src_d, {ALIGN{1'b0}}});
+            mant_out_raw = MANT_MULT_W'({mant_src_d, {ALIGN{1'b0}}});
         else
-            mant_out_comb = mant_mult_rne;
+            mant_out_raw = mant_mult_rne;
     end
+
+    // -------------------------------------------------------------------------
+    // Second retiming register: isolates the RNE adder + base2 mux so that they
+    // no longer sit between two DSP blocks.
+    //
+    // dont_touch is required. Without it Vivado packs this register (and the
+    // REGISTER_OUTPUT one) into the consumer DSP's two-deep B input register,
+    // which leaves the adder still hanging directly off the multiplier's P
+    // output: 2.29 ns of DSP Tco plus the whole carry chain in one stage.
+    // Forcing it into fabric costs MANT_MULT_W flip-flops and buys a clean cut.
+    // -------------------------------------------------------------------------
+    generate
+        if (EXTRA_STAGES >= 2) begin : gen_rne_reg
+            (* dont_touch = "true" *) logic [MANT_MULT_W-1:0] mant_rne_q;
+            if (RESET_DATAPATH) begin : gen_rst
+                always_ff @(posedge clk or negedge rst_n) begin
+                    if (!rst_n)       mant_rne_q <= '0;
+                    else if (pipe_en) mant_rne_q <= mant_out_raw;
+                end
+            end else begin : gen_nrst
+                always_ff @(posedge clk) begin
+                    if (pipe_en) mant_rne_q <= mant_out_raw;
+                end
+            end
+            assign mant_out_comb = mant_rne_q;
+        end else begin : gen_rne_wire
+            assign mant_out_comb = mant_out_raw;
+        end
+    endgenerate
 
     generate
         if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_reg

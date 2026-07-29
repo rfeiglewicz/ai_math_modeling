@@ -39,7 +39,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_hybrid___024root final : public Ve
     SData/*15:0*/ bf16_expe_hybrid__DOT__s3_sparse_data;
     SData/*15:0*/ bf16_expe_hybrid__DOT__s3_dense_data;
     SData/*15:0*/ bf16_expe_hybrid__DOT__core_data;
-    SData/*11:0*/ bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr;
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_sparse__DOT__data_comb;
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
@@ -48,10 +48,14 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_hybrid___024root final : public Ve
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__5__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__6__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__7__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__8__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__9__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__10__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__11__KET____DOT__nxt;
     IData/*21:0*/ bf16_expe_hybrid__DOT__s1_decomposed;
     IData/*31:0*/ __VactIterCount;
     VlUnpacked<SData/*15:0*/, 1024> bf16_expe_hybrid__DOT__u_dense_rom__DOT__rom;
-    VlUnpacked<SData/*15:0*/, 8> bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
+    VlUnpacked<SData/*15:0*/, 12> bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;
     VlTriggerVec<2> __VactTriggered;

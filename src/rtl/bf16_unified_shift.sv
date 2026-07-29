@@ -31,7 +31,12 @@ module bf16_unified_shift
     // 0 = bidirectional barrel shifter built from fabric MUX stages
     // 1 = one-hot multiply mapped onto DSP48 blocks (bit-exact, see below)
     parameter bit DSP_SHIFT       = 1'b0,
-    parameter bit RESET_DATAPATH  = 1'b1
+    parameter bit RESET_DATAPATH  = 1'b1,
+    // Retiming: 1 inserts a register between the shift itself and the merge /
+    // slice logic that follows it. In DSP mode that register lands in the DSP
+    // PREG and stops the shift multiply and the coefficient multiply from
+    // sharing one combinational stage. Bit-exact; costs one cycle of latency.
+    parameter int EXTRA_STAGES    = 0
 )(
     input  logic                                           clk,
     input  logic                                           rst_n,
@@ -68,15 +73,31 @@ module bf16_unified_shift
         // plus the left/right select => ~200 LUTs on 7-series.
         // ---------------------------------------------------------------------
         logic [UNIFIED_W-1:0] mant_aligned;
+        logic [UNIFIED_W-1:0] shifted_comb;
 
         // mant_in placed at bits [FRAC_PAD + MANT_MULT_W - 1 : FRAC_PAD]
         assign mant_aligned = UNIFIED_W'({mant_in, {FRAC_PAD{1'b0}}});
 
         always_comb begin
             if ($signed(exponent) >= 0)
-                unified_shifted = mant_aligned << exponent;
+                shifted_comb = mant_aligned << exponent;
             else
-                unified_shifted = mant_aligned >> (-exponent);
+                shifted_comb = mant_aligned >> (-exponent);
+        end
+
+        // Same optional retiming stage as the DSP branch, so that the pipeline
+        // depth does not depend on which shifter is selected.
+        if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_barrel_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n)       unified_shifted <= '0;
+                else if (pipe_en) unified_shifted <= shifted_comb;
+            end
+        end else if (EXTRA_STAGES >= 1) begin : gen_barrel_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) unified_shifted <= shifted_comb;
+            end
+        end else begin : gen_barrel_wire
+            assign unified_shifted = shifted_comb;
         end
 
     end else begin : gen_shift_dsp
@@ -139,8 +160,44 @@ module bf16_unified_shift
         assign lo_prod = mant_lo * onehot;   // DSP #1
         assign hi_prod = mant_hi * onehot;   // DSP #2
 
+        // -------------------------------------------------------------------
+        // Optional retiming register on the raw products.
+        //
+        // Without it the DSP result is merged, sliced and handed to the next
+        // block's multiplier all in one stage, so two DSP multiplies end up in
+        // series: about 3.8 ns in this DSP plus another 4 ns in the coefficient
+        // multiply. The merge is combinational logic sitting between the DSP
+        // and the output register, which is exactly what stops Vivado using
+        // the DSP's own PREG. Registering the products first puts the register
+        // back inside the block, where it costs no fabric.
+        // -------------------------------------------------------------------
+        logic [LO_PROD_W-1:0] lo_prod_s;
+        logic [HI_PROD_W-1:0] hi_prod_s;
+
+        if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_prod_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    lo_prod_s <= '0;
+                    hi_prod_s <= '0;
+                end else if (pipe_en) begin
+                    lo_prod_s <= lo_prod;
+                    hi_prod_s <= hi_prod;
+                end
+            end
+        end else if (EXTRA_STAGES >= 1) begin : gen_prod_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
+                    lo_prod_s <= lo_prod;
+                    hi_prod_s <= hi_prod;
+                end
+            end
+        end else begin : gen_prod_wire
+            assign lo_prod_s = lo_prod;
+            assign hi_prod_s = hi_prod;
+        end
+
         // Disjoint merge -- pure wiring plus SPLIT_LO..SPLIT_LO+15 OR gates.
-        assign unified_shifted = (UNIFIED_W'(hi_prod) << SPLIT_LO) | UNIFIED_W'(lo_prod);
+        assign unified_shifted = (UNIFIED_W'(hi_prod_s) << SPLIT_LO) | UNIFIED_W'(lo_prod_s);
     end
     endgenerate
 

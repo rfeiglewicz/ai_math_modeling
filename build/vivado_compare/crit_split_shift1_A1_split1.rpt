@@ -1,0 +1,263 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Jul 29 20:39:58 2026
+| Host         : radoslaw-feiglewicz running 64-bit Ubuntu 24.04.2 LTS
+| Command      : report_timing -max_paths 3 -unique_pins -delay_type max -file /home/radoslaw-feiglewicz/Pulpit/Git_projects/exp_eval_benchmarks/ai_math_modeling/build/vivado_compare/crit_split_shift1_A1_split1.rpt
+| Design       : bf16_exp2
+| Device       : 7a200t-fbg484
+| Speed File   : -1  PRODUCTION 1.23 2018-06-13
+| Design State : Synthesized
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (VIOLATED) :        -8.066ns  (required time - arrival time)
+  Source:                 u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/CLK
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Destination:            u_normalize/gen_split.msb_idx_s_reg[0]/D
+                            (rising edge-triggered cell FDRE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            2.000ns  (clk rise@2.000ns - clk rise@0.000ns)
+  Data Path Delay:        9.915ns  (logic 5.029ns (50.723%)  route 4.886ns (49.277%))
+  Logic Levels:           12  (CARRY4=6 LUT1=1 LUT2=1 LUT3=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 4.100 - 2.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=386, unplaced)       0.584     2.424    u_lin_approx/clk_IBUF_BUFG
+                         DSP48E1                                      r  u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/CLK
+  -------------------------------------------------------------------    -------------------
+                         DSP48E1 (Prop_dsp48e1_CLK_P[0])
+                                                      2.191     4.615 r  u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/P[0]
+                         net (fo=1, unplaced)         0.800     5.414    u_lin_approx/unnormalized_res4[15]
+                         LUT2 (Prop_lut2_I1_O)        0.124     5.538 r  u_lin_approx/unnormalized_res0_carry__2_i_8/O
+                         net (fo=1, unplaced)         0.000     5.538    u_lin_approx/unnormalized_res0_carry__2_i_8_n_0
+                         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533     6.071 r  u_lin_approx/unnormalized_res0_carry__2_i_5/CO[3]
+                         net (fo=1, unplaced)         0.009     6.080    u_lin_approx/unnormalized_res0_carry__2_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     6.197 r  u_lin_approx/unnormalized_res0_carry__3_i_5/CO[3]
+                         net (fo=1, unplaced)         0.000     6.197    u_lin_approx/unnormalized_res0_carry__3_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     6.314 r  u_lin_approx/unnormalized_res0_carry__4_i_5/CO[3]
+                         net (fo=1, unplaced)         0.000     6.314    u_lin_approx/unnormalized_res0_carry__4_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.331     6.645 f  u_lin_approx/unnormalized_res0_carry__5_i_5/O[3]
+                         net (fo=1, unplaced)         0.618     7.263    u_lin_approx/gen_split_mult.merged[29]
+                         LUT1 (Prop_lut1_I0_O)        0.307     7.570 r  u_lin_approx/unnormalized_res0_carry__6_i_2/O
+                         net (fo=1, unplaced)         0.000     7.570    u_lin_approx/p_0_in[37]
+                         CARRY4 (Prop_carry4_S[2]_CO[3])
+                                                      0.380     7.950 r  u_lin_approx/unnormalized_res0_carry__6/CO[3]
+                         net (fo=1, unplaced)         0.000     7.950    u_lin_approx/unnormalized_res0_carry__6_n_0
+                         CARRY4 (Prop_carry4_CI_O[2])
+                                                      0.256     8.206 r  u_lin_approx/unnormalized_res0_carry__7/O[2]
+                         net (fo=4, unplaced)         1.138     9.344    u_lin_approx/s5_unnorm_res[33]
+                         LUT5 (Prop_lut5_I0_O)        0.301     9.645 f  u_lin_approx/gen_split.msb_idx_s[7]_i_8/O
+                         net (fo=6, unplaced)         0.934    10.579    u_lin_approx/gen_split.msb_idx_s[7]_i_8_n_0
+                         LUT6 (Prop_lut6_I4_O)        0.124    10.703 r  u_lin_approx/gen_split.msb_idx_s[3]_i_4/O
+                         net (fo=3, unplaced)         0.467    11.170    u_lin_approx/gen_split.msb_idx_s[3]_i_4_n_0
+                         LUT3 (Prop_lut3_I2_O)        0.124    11.294 f  u_lin_approx/gen_split.msb_idx_s[2]_i_2/O
+                         net (fo=3, unplaced)         0.920    12.214    u_lin_approx/gen_split.msb_idx_s[2]_i_2_n_0
+                         LUT6 (Prop_lut6_I2_O)        0.124    12.338 r  u_lin_approx/gen_split.msb_idx_s[0]_i_1/O
+                         net (fo=1, unplaced)         0.000    12.338    u_normalize/D[0]
+                         FDRE                                         r  u_normalize/gen_split.msb_idx_s_reg[0]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        2.000     2.000 r  
+                                                      0.000     2.000 r  clk (IN)
+                         net (fo=0)                   0.000     2.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.811     2.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     3.570    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.091     3.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=386, unplaced)       0.439     4.100    u_normalize/clk_IBUF_BUFG
+                         FDRE                                         r  u_normalize/gen_split.msb_idx_s_reg[0]/C
+                         clock pessimism              0.178     4.279    
+                         clock uncertainty           -0.035     4.243    
+                         FDRE (Setup_fdre_C_D)        0.029     4.272    u_normalize/gen_split.msb_idx_s_reg[0]
+  -------------------------------------------------------------------
+                         required time                          4.272    
+                         arrival time                         -12.338    
+  -------------------------------------------------------------------
+                         slack                                 -8.066    
+
+Slack (VIOLATED) :        -7.829ns  (required time - arrival time)
+  Source:                 u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/CLK
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Destination:            u_normalize/gen_split.msb_idx_s_reg[2]/D
+                            (rising edge-triggered cell FDRE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            2.000ns  (clk rise@2.000ns - clk rise@0.000ns)
+  Data Path Delay:        9.678ns  (logic 5.029ns (51.965%)  route 4.649ns (48.035%))
+  Logic Levels:           12  (CARRY4=6 LUT1=1 LUT2=1 LUT3=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 4.100 - 2.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=386, unplaced)       0.584     2.424    u_lin_approx/clk_IBUF_BUFG
+                         DSP48E1                                      r  u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/CLK
+  -------------------------------------------------------------------    -------------------
+                         DSP48E1 (Prop_dsp48e1_CLK_P[0])
+                                                      2.191     4.615 r  u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/P[0]
+                         net (fo=1, unplaced)         0.800     5.414    u_lin_approx/unnormalized_res4[15]
+                         LUT2 (Prop_lut2_I1_O)        0.124     5.538 r  u_lin_approx/unnormalized_res0_carry__2_i_8/O
+                         net (fo=1, unplaced)         0.000     5.538    u_lin_approx/unnormalized_res0_carry__2_i_8_n_0
+                         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533     6.071 r  u_lin_approx/unnormalized_res0_carry__2_i_5/CO[3]
+                         net (fo=1, unplaced)         0.009     6.080    u_lin_approx/unnormalized_res0_carry__2_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     6.197 r  u_lin_approx/unnormalized_res0_carry__3_i_5/CO[3]
+                         net (fo=1, unplaced)         0.000     6.197    u_lin_approx/unnormalized_res0_carry__3_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     6.314 r  u_lin_approx/unnormalized_res0_carry__4_i_5/CO[3]
+                         net (fo=1, unplaced)         0.000     6.314    u_lin_approx/unnormalized_res0_carry__4_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.331     6.645 f  u_lin_approx/unnormalized_res0_carry__5_i_5/O[3]
+                         net (fo=1, unplaced)         0.618     7.263    u_lin_approx/gen_split_mult.merged[29]
+                         LUT1 (Prop_lut1_I0_O)        0.307     7.570 r  u_lin_approx/unnormalized_res0_carry__6_i_2/O
+                         net (fo=1, unplaced)         0.000     7.570    u_lin_approx/p_0_in[37]
+                         CARRY4 (Prop_carry4_S[2]_CO[3])
+                                                      0.380     7.950 r  u_lin_approx/unnormalized_res0_carry__6/CO[3]
+                         net (fo=1, unplaced)         0.000     7.950    u_lin_approx/unnormalized_res0_carry__6_n_0
+                         CARRY4 (Prop_carry4_CI_O[2])
+                                                      0.256     8.206 r  u_lin_approx/unnormalized_res0_carry__7/O[2]
+                         net (fo=4, unplaced)         1.138     9.344    u_lin_approx/s5_unnorm_res[33]
+                         LUT5 (Prop_lut5_I0_O)        0.301     9.645 f  u_lin_approx/gen_split.msb_idx_s[7]_i_8/O
+                         net (fo=6, unplaced)         0.934    10.579    u_lin_approx/gen_split.msb_idx_s[7]_i_8_n_0
+                         LUT6 (Prop_lut6_I4_O)        0.124    10.703 r  u_lin_approx/gen_split.msb_idx_s[3]_i_4/O
+                         net (fo=3, unplaced)         0.467    11.170    u_lin_approx/gen_split.msb_idx_s[3]_i_4_n_0
+                         LUT3 (Prop_lut3_I2_O)        0.124    11.294 f  u_lin_approx/gen_split.msb_idx_s[2]_i_2/O
+                         net (fo=3, unplaced)         0.683    11.977    u_lin_approx/gen_split.msb_idx_s[2]_i_2_n_0
+                         LUT6 (Prop_lut6_I0_O)        0.124    12.101 r  u_lin_approx/gen_split.msb_idx_s[2]_i_1/O
+                         net (fo=1, unplaced)         0.000    12.101    u_normalize/D[2]
+                         FDRE                                         r  u_normalize/gen_split.msb_idx_s_reg[2]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        2.000     2.000 r  
+                                                      0.000     2.000 r  clk (IN)
+                         net (fo=0)                   0.000     2.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.811     2.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     3.570    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.091     3.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=386, unplaced)       0.439     4.100    u_normalize/clk_IBUF_BUFG
+                         FDRE                                         r  u_normalize/gen_split.msb_idx_s_reg[2]/C
+                         clock pessimism              0.178     4.279    
+                         clock uncertainty           -0.035     4.243    
+                         FDRE (Setup_fdre_C_D)        0.029     4.272    u_normalize/gen_split.msb_idx_s_reg[2]
+  -------------------------------------------------------------------
+                         required time                          4.272    
+                         arrival time                         -12.101    
+  -------------------------------------------------------------------
+                         slack                                 -7.829    
+
+Slack (VIOLATED) :        -7.776ns  (required time - arrival time)
+  Source:                 u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/CLK
+                            (rising edge-triggered cell DSP48E1 clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Destination:            u_normalize/gen_split.msb_idx_s_reg[1]/D
+                            (rising edge-triggered cell FDRE clocked by clk  {rise@0.000ns fall@1.000ns period=2.000ns})
+  Path Group:             clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            2.000ns  (clk rise@2.000ns - clk rise@0.000ns)
+  Data Path Delay:        9.625ns  (logic 4.876ns (50.661%)  route 4.749ns (49.339%))
+  Logic Levels:           10  (CARRY4=4 LUT1=1 LUT2=1 LUT4=1 LUT6=3)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    2.100ns = ( 4.100 - 2.000 ) 
+    Source Clock Delay      (SCD):    2.424ns
+    Clock Pessimism Removal (CPR):    0.178ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk rise edge)        0.000     0.000 r  
+                                                      0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.944     0.944 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.800     1.744    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.096     1.840 r  clk_IBUF_BUFG_inst/O
+                         net (fo=386, unplaced)       0.584     2.424    u_lin_approx/clk_IBUF_BUFG
+                         DSP48E1                                      r  u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/CLK
+  -------------------------------------------------------------------    -------------------
+                         DSP48E1 (Prop_dsp48e1_CLK_P[0])
+                                                      2.191     4.615 r  u_lin_approx/gen_split_mult.gen_part[1].gen_part_reg.part_reg_reg[1]/P[0]
+                         net (fo=1, unplaced)         0.800     5.414    u_lin_approx/unnormalized_res4[15]
+                         LUT2 (Prop_lut2_I1_O)        0.124     5.538 r  u_lin_approx/unnormalized_res0_carry__2_i_8/O
+                         net (fo=1, unplaced)         0.000     5.538    u_lin_approx/unnormalized_res0_carry__2_i_8_n_0
+                         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533     6.071 r  u_lin_approx/unnormalized_res0_carry__2_i_5/CO[3]
+                         net (fo=1, unplaced)         0.009     6.080    u_lin_approx/unnormalized_res0_carry__2_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.331     6.411 f  u_lin_approx/unnormalized_res0_carry__3_i_5/O[3]
+                         net (fo=1, unplaced)         0.618     7.029    u_lin_approx/gen_split_mult.merged[21]
+                         LUT1 (Prop_lut1_I0_O)        0.307     7.336 r  u_lin_approx/unnormalized_res0_carry__4_i_2/O
+                         net (fo=1, unplaced)         0.000     7.336    u_lin_approx/p_0_in[29]
+                         CARRY4 (Prop_carry4_S[2]_CO[3])
+                                                      0.380     7.716 r  u_lin_approx/unnormalized_res0_carry__4/CO[3]
+                         net (fo=1, unplaced)         0.000     7.716    u_lin_approx/unnormalized_res0_carry__4_n_0
+                         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.331     8.047 f  u_lin_approx/unnormalized_res0_carry__5/O[3]
+                         net (fo=4, unplaced)         0.832     8.879    u_lin_approx/s5_unnorm_res[26]
+                         LUT4 (Prop_lut4_I1_O)        0.307     9.186 r  u_lin_approx/gen_split.msb_idx_s[7]_i_10/O
+                         net (fo=5, unplaced)         0.477     9.663    u_lin_approx/gen_split.msb_idx_s[7]_i_10_n_0
+                         LUT6 (Prop_lut6_I5_O)        0.124     9.787 r  u_lin_approx/gen_split.msb_idx_s[1]_i_8/O
+                         net (fo=1, unplaced)         0.902    10.689    u_lin_approx/gen_split.msb_idx_s[1]_i_8_n_0
+                         LUT6 (Prop_lut6_I2_O)        0.124    10.813 r  u_lin_approx/gen_split.msb_idx_s[1]_i_3/O
+                         net (fo=1, unplaced)         1.111    11.924    u_lin_approx/gen_split.msb_idx_s[1]_i_3_n_0
+                         LUT6 (Prop_lut6_I1_O)        0.124    12.048 r  u_lin_approx/gen_split.msb_idx_s[1]_i_1/O
+                         net (fo=1, unplaced)         0.000    12.048    u_normalize/D[1]
+                         FDRE                                         r  u_normalize/gen_split.msb_idx_s_reg[1]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk rise edge)        2.000     2.000 r  
+                                                      0.000     2.000 r  clk (IN)
+                         net (fo=0)                   0.000     2.000    clk
+                         IBUF (Prop_ibuf_I_O)         0.811     2.811 r  clk_IBUF_inst/O
+                         net (fo=1, unplaced)         0.760     3.570    clk_IBUF
+                         BUFG (Prop_bufg_I_O)         0.091     3.661 r  clk_IBUF_BUFG_inst/O
+                         net (fo=386, unplaced)       0.439     4.100    u_normalize/clk_IBUF_BUFG
+                         FDRE                                         r  u_normalize/gen_split.msb_idx_s_reg[1]/C
+                         clock pessimism              0.178     4.279    
+                         clock uncertainty           -0.035     4.243    
+                         FDRE (Setup_fdre_C_D)        0.029     4.272    u_normalize/gen_split.msb_idx_s_reg[1]
+  -------------------------------------------------------------------
+                         required time                          4.272    
+                         arrival time                         -12.048    
+  -------------------------------------------------------------------
+                         slack                                 -7.776    
+
+
+
+

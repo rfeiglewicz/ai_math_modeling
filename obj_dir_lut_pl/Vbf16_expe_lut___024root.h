@@ -33,7 +33,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_lut___024root final : public Veril
     SData/*11:0*/ bf16_expe_lut__DOT__s2_addr;
     SData/*15:0*/ bf16_expe_lut__DOT__s3_rom_data;
     SData/*15:0*/ bf16_expe_lut__DOT__core_data;
-    SData/*11:0*/ bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr;
+    SData/*15:0*/ bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
@@ -41,11 +41,15 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_lut___024root final : public Veril
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__5__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__6__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__7__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__8__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__9__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__10__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__11__KET____DOT__nxt;
     IData/*21:0*/ bf16_expe_lut__DOT__s1_decomposed;
     IData/*31:0*/ __VactIterCount;
     VlUnpacked<CData/*1:0*/, 2> bf16_expe_lut__DOT__eo_delay;
     VlUnpacked<SData/*15:0*/, 2176> bf16_expe_lut__DOT__u_rom__DOT__rom;
-    VlUnpacked<SData/*15:0*/, 8> bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
+    VlUnpacked<SData/*15:0*/, 12> bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;
     VlTriggerVec<2> __VactTriggered;

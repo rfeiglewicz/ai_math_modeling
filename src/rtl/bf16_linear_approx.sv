@@ -38,7 +38,24 @@ module bf16_linear_approx
     //   2 - additionally register the subtract result.
     // Purely a timing transformation: the arithmetic is untouched, so the
     // result stays bit-identical. Only latency grows, by EXTRA_STAGES cycles.
-    parameter int EXTRA_STAGES    = 0
+    parameter int EXTRA_STAGES    = 0,
+    // Split the multiply into partial products that each fit one DSP48E1.
+    //
+    // COEFF_W x MULT_X_W is 21 x 30, and the DSP48E1 ports are A = 25 and
+    // B = 18, so the wide operand does not fit. Vivado therefore cascades two
+    // slices through PCOUT -> PCIN, and because there is no register anywhere
+    // in that cascade the whole thing is one combinational hop: the multiply,
+    // the cascade route and the partial-product add in series. That was the
+    // critical path once everything else had been split.
+    //
+    //     a * x = sum_i  (a * x_i) << (i * SPLIT_W)      x_i = SPLIT_W bits
+    //
+    // Each a * x_i fits a single slice, so the register from EXTRA_STAGES can
+    // sit on the partial products (DSP MREG/PREG) instead of after the merged
+    // result. Exact by construction - it is just the distributive law, no bits
+    // are dropped - so the output stays bit-identical.
+    // Requires EXTRA_STAGES >= 1 to be useful; ignored otherwise.
+    parameter bit SPLIT_MULT      = 1'b0
 )(
     input  logic              clk,
     input  logic              rst_n,
@@ -141,9 +158,102 @@ module bf16_linear_approx
     // Retiming register 1: between the multiply and the subtract.
     // b has to be delayed with it so both operands still meet on the same
     // input sample. Vivado folds this register into the DSP48 PREG.
+    //
+    // With SPLIT_MULT the register moves one step earlier, onto the individual
+    // partial products, which is what breaks the DSP-to-DSP cascade.
     // -------------------------------------------------------------------------
+    // Widest B-port operand a single DSP48E1 takes is 18 bits; 15 keeps some
+    // headroom and divides 30 exactly.
+    localparam int SPLIT_W  = 15;
+    localparam int NSPLIT   = (MULT_X_W + SPLIT_W - 1) / SPLIT_W;
+    localparam int PAD_X_W  = NSPLIT * SPLIT_W;
+    localparam int PART_W   = COEFF_W + SPLIT_W;
+
     generate
-        if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_mult_reg_rst
+        if (SPLIT_MULT && EXTRA_STAGES >= 1) begin : gen_split_mult
+            logic [PAD_X_W-1:0]     frac_padded;
+            logic [PART_W-1:0]      part_comb [NSPLIT];
+            logic [PART_W-1:0]      part_reg  [NSPLIT];
+            logic [CORE_MULT_W-1:0] merged;
+
+            assign frac_padded = PAD_X_W'(frac_hi);
+
+            for (genvar i = 0; i < NSPLIT; i++) begin : gen_part
+                // One clean A*B per slice, so it maps to a DSP without cascade.
+                (* use_dsp = "yes" *) logic [PART_W-1:0] p;
+                assign p = coeff_a_w * frac_padded[i*SPLIT_W +: SPLIT_W];
+                assign part_comb[i] = p;
+
+                if (RESET_DATAPATH) begin : gen_part_reg_rst
+                    always_ff @(posedge clk or negedge rst_n) begin
+                        if (!rst_n)       part_reg[i] <= '0;
+                        else if (pipe_en) part_reg[i] <= part_comb[i];
+                    end
+                end else begin : gen_part_reg
+                    always_ff @(posedge clk) begin
+                        if (pipe_en) part_reg[i] <= part_comb[i];
+                    end
+                end
+            end
+
+            // Recombine. The parts do overlap, so this is a real add, but it is
+            // only PART_W wide rather than the full product width.
+            always_comb begin
+                merged = '0;
+                for (int i = 0; i < NSPLIT; i++)
+                    merged += CORE_MULT_W'(part_reg[i]) << (i * SPLIT_W);
+            end
+
+            // ---------------------------------------------------------------
+            // Retiming register 3 (EXTRA_STAGES >= 3): between the merge adder
+            // and the subtract. Without it the merge carry chain and the
+            // 62-bit subtract carry chain run back to back -- measured as 11
+            // CARRY4 in series, 6.34 ns. dont_touch stops Vivado from packing
+            // it back into the DSP output path.
+            // coeff_b needs the matching extra delay.
+            // ---------------------------------------------------------------
+            if (EXTRA_STAGES >= 3) begin : gen_merge_reg
+                (* dont_touch = "true" *) logic [CORE_MULT_W-1:0] merged_q;
+                logic [COEFF_W-1:0] coeff_b_d;
+
+                if (RESET_DATAPATH) begin : gen_rst
+                    always_ff @(posedge clk or negedge rst_n) begin
+                        if (!rst_n) begin
+                            merged_q      <= '0;
+                            coeff_b_d     <= '0;
+                            coeff_b_stage <= '0;
+                        end else if (pipe_en) begin
+                            merged_q      <= merged;
+                            coeff_b_d     <= coeff_b_w;
+                            coeff_b_stage <= coeff_b_d;
+                        end
+                    end
+                end else begin : gen_nrst
+                    always_ff @(posedge clk) begin
+                        if (pipe_en) begin
+                            merged_q      <= merged;
+                            coeff_b_d     <= coeff_b_w;
+                            coeff_b_stage <= coeff_b_d;
+                        end
+                    end
+                end
+
+                assign ax_core = merged_q;
+            end else begin : gen_merge_wire
+                assign ax_core = merged;
+
+                if (RESET_DATAPATH) begin : gen_b_reg_rst
+                    always_ff @(posedge clk or negedge rst_n) begin
+                        if (!rst_n)       coeff_b_stage <= '0;
+                        else if (pipe_en) coeff_b_stage <= coeff_b_w;
+                    end
+                end else begin : gen_b_reg
+                    always_ff @(posedge clk) begin
+                        if (pipe_en) coeff_b_stage <= coeff_b_w;
+                    end
+                end
+            end
+        end else if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_mult_reg_rst
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n) begin
                     ax_core       <= '0;

@@ -59,15 +59,21 @@ module bf16_exp2
     // bit-identical; only latency grows, and the growth is absorbed by
     // shrinking the output padding, so the total stays at PIPE_TARGET.
     //
-    //   RETIME_LOG2E  0..1  register inside bf16_log2e_mult
-    //   RETIME_APPROX 0..2  registers inside bf16_linear_approx
+    //   RETIME_LOG2E  0..2  registers inside bf16_log2e_mult
+    //   RETIME_SHIFT  0..1  register inside bf16_unified_shift
+    //   RETIME_APPROX 0..3  registers inside bf16_linear_approx (3 needs SPLIT_MULT)
     //   RETIME_NORM   0..1  register inside bf16_normalize
     //   RETIME_ROUND  0..2  registers inside bf16_round
     // -------------------------------------------------------------------------
-    parameter int RETIME_LOG2E  = 1,
-    parameter int RETIME_APPROX = 1,
+    parameter int RETIME_LOG2E  = 2,
+    parameter int RETIME_SHIFT  = 1,
+    parameter int RETIME_APPROX = 3,
     parameter int RETIME_NORM   = 1,
-    parameter int RETIME_ROUND  = 2
+    parameter int RETIME_ROUND  = 2,
+    // Split the coefficient multiply into per-DSP partial products so the
+    // retiming register can break the DSP-to-DSP cascade. Costs no extra
+    // latency on top of RETIME_APPROX; see bf16_linear_approx.
+    parameter bit SPLIT_MULT    = 1'b1
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -92,7 +98,13 @@ module bf16_exp2
     // Retiming only makes sense when the pipeline registers exist at all; in
     // combinational mode every one of these collapses to zero.
     localparam int RT_LOG2E  = REGISTER_STAGES ? RETIME_LOG2E  : 0;
-    localparam int RT_APPROX = REGISTER_STAGES ? RETIME_APPROX : 0;
+    localparam int RT_SHIFT  = REGISTER_STAGES ? RETIME_SHIFT  : 0;
+    // The third approx stage lives between the partial-product merge adder and
+    // the subtract, so it only exists when the multiply is actually split.
+    // Clamping here keeps the declared depth equal to the real register count.
+    localparam int RETIME_APPROX_EFF = (RETIME_APPROX >= 3 && !SPLIT_MULT)
+                                       ? 2 : RETIME_APPROX;
+    localparam int RT_APPROX = REGISTER_STAGES ? RETIME_APPROX_EFF : 0;
     localparam int RT_NORM   = REGISTER_STAGES ? RETIME_NORM   : 0;
     localparam int RT_ROUND  = REGISTER_STAGES ? RETIME_ROUND  : 0;
 
@@ -102,9 +114,11 @@ module bf16_exp2
     // A register added inside the log2(e) multiply shifts everything after it,
     // so it lengthens the exponent and early-out chains but leaves the
     // int_part chain alone -- int_part is produced downstream of it.
+    // A register added inside the unified shift sits upstream of int_part too,
+    // and downstream of the exponent, so it only affects the early-out chain.
     localparam int RETIME_PRE   = RT_APPROX + RT_NORM;
     localparam int RETIME_POST  = RETIME_PRE + RT_ROUND;
-    localparam int RETIME_EXTRA = RT_LOG2E + RETIME_POST;
+    localparam int RETIME_EXTRA = RT_LOG2E + RT_SHIFT + RETIME_POST;
     localparam int CORE_DEPTH = REGISTER_STAGES ? (7 + RETIME_EXTRA) : 0;
     localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
                                 ? PIPE_TARGET - CORE_DEPTH : 0;
@@ -266,7 +280,8 @@ module bf16_exp2
     bf16_unified_shift #(
         .REGISTER_OUTPUT(REGISTER_STAGES),
         .DSP_SHIFT      (DSP_SHIFT),
-        .RESET_DATAPATH (RESET_DATAPATH)
+        .RESET_DATAPATH (RESET_DATAPATH),
+        .EXTRA_STAGES   (RT_SHIFT)
     ) u_unified_shift (
         .clk      (clk),
         .rst_n    (rst_n),
@@ -288,7 +303,8 @@ module bf16_exp2
         .REGISTER_OUTPUT (REGISTER_STAGES),
         .RESET_DATAPATH  (RESET_DATAPATH),
         .FRAC_ZERO_LSBS  (MANT_MULT_F - MANT_MULT_ROUND_FRAC),
-        .EXTRA_STAGES    (RT_APPROX)
+        .EXTRA_STAGES    (RT_APPROX),
+        .SPLIT_MULT      (SPLIT_MULT)
     ) u_lin_approx (
         .clk             (clk),
         .rst_n           (rst_n),

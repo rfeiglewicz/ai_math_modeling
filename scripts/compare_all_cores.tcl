@@ -59,8 +59,8 @@ set src_poly4  [concat $common {bf16_expe_poly4_rom.sv bf16_expe_poly4.sv}]
 # widac ile kosztuje i ile daje. PIPE_TARGET=0 wszedzie, bo dopelnienie do
 # wspolnej latencji nie ma wplywu na Fmax, a zaciemnia obraz zasobow.
 # -----------------------------------------------------------------------------
-set RT_OFF_EXP2 "RETIME_LOG2E=0 RETIME_APPROX=0 RETIME_NORM=0 RETIME_ROUND=0"
-set RT_ON_EXP2  "RETIME_LOG2E=1 RETIME_APPROX=1 RETIME_NORM=1 RETIME_ROUND=2"
+set RT_OFF_EXP2 "RETIME_LOG2E=0 RETIME_SHIFT=0 RETIME_APPROX=0 RETIME_NORM=0 RETIME_ROUND=0 SPLIT_MULT=0"
+set RT_ON_EXP2  "RETIME_LOG2E=2 RETIME_SHIFT=1 RETIME_APPROX=3 RETIME_NORM=1 RETIME_ROUND=2 SPLIT_MULT=1"
 set EXP2_OPT    "DSP_SHIFT=1 MANT_MULT_ROUND_FRAC=21 RESET_DATAPATH=0"
 
 set variants [list \
@@ -72,9 +72,9 @@ set variants [list \
   [list "expe cut"         bf16_expe_cut    $src_cut    "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_CUT=0 RETIME_FE=0"] \
   [list "expe cut+retime"  bf16_expe_cut    $src_cut    "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_CUT=2 RETIME_FE=1"] \
   [list "expe poly4"       bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_MULT=0 RETIME_FE=0"] \
-  [list "poly4+retime"     bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_MULT=1 RETIME_FE=1"] \
-  [list "poly4 dsp"        bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=0"] \
-  [list "poly4 dsp+retime" bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=1"] \
+  [list "poly4+retime"     bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_MULT=1 RETIME_FE=2"] \
+  [list "poly4 dsp"        bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=0 RETIME_FE=0"] \
+  [list "poly4 dsp+retime" bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=1 RETIME_FE=2"] \
 ]
 
 set results {}
