@@ -243,11 +243,20 @@ sweep_exp2:
 # =========================================================================
 # Porownanie wszystkich implementacji obok siebie
 # =========================================================================
-.PHONY: compare_cores compare_cores_verify compare_all
+.PHONY: compare_cores compare_cores_verify compare_all pipe_depths resource_table
 
 # Synteza wszystkich rdzeni w jednym przebiegu -> jedna tabela zasobow.
 compare_cores: gen_expe_lut_rom gen_expe_hybrid_tables gen_expe_cut_tables gen_expe_poly4_tables
 	$(VIVADO) -mode batch -nojournal -nolog -source scripts/compare_all_cores.tcl
+
+# Glebokosc potoku kazdego wariantu, zgloszona przez sam RTL przy elaboracji.
+pipe_depths:
+	@scripts/pipe_depths.sh
+
+# docs/resource_comparison.md z pomiarow: zasoby+Fmax z Vivado, glebokosc z RTL.
+# Wymaga wczesniejszego `make compare_cores` (zapisuje resources.csv).
+resource_table:
+	@python3 scripts/make_resource_table.py
 
 # Weryfikacja funkcjonalna wszystkich rdzeni (Verilator, wyczerpujaca).
 # Rdzenie maja rozne testbenche, wiec podsumowanie filtrujemy po obu formatach:

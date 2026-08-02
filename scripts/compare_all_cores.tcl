@@ -103,16 +103,46 @@ foreach v $variants {
         continue
     }
 
-    set lut   [llength [get_cells -hierarchical -quiet -filter {PRIMITIVE_GROUP == LUT}]]
-    set carry [llength [get_cells -hierarchical -quiet -filter {PRIMITIVE_GROUP == CARRY}]]
-    set ff    [llength [get_cells -hierarchical -quiet -filter {PRIMITIVE_GROUP == FLOP_LATCH}]]
-    set srl   [llength [get_cells -hierarchical -quiet -filter {REF_NAME =~ SRL*}]]
-    set dsp   [llength [get_cells -hierarchical -quiet -filter {REF_NAME == DSP48E1}]]
-    set bram  [llength [get_cells -hierarchical -quiet -filter {REF_NAME =~ RAMB*}]]
+    # -------------------------------------------------------------------------
+    # Zasoby bierzemy z report_utilization, nie z get_cells.
+    #
+    # get_cells liczy prymitywy, a report_utilization liczy MIEJSCA w ukladzie:
+    # dwa LUT5 dzielace jeden LUT6 to dwa prymitywy, ale jedno miejsce. Dla
+    # oceny "ile to zajmuje w ukladzie" liczy sie miejsce, wiec bierzemy
+    # oficjalna tabele Vivado razem z kolumna Available.
+    # -------------------------------------------------------------------------
+    set util [report_utilization -return_string]
 
-    # SRL16E sits in the LUT primitive group but is LUT-as-memory, not logic.
-    # Report it separately so pipeline padding does not look like extra logic.
-    set lut_logic [expr {$lut - $srl}]
+    proc util_row {txt name idx} {
+        # Wiersz: | Nazwa | Used | Fixed | Prohibited | Available | Util% |
+        # Uwaga: "Block RAM Tile" bywa ulamkowe (0.5 = pojedynczy RAMB18),
+        # wiec nie wolno tu wymagac liczby calkowitej.
+        set pat "\\|\\s+[string map {* {\\*}} $name]\\s*\\|(\[^\n\]*)\\|"
+        if {[regexp $pat $txt -> rest]} {
+            set cols [split $rest "|"]
+            set v [string trim [lindex $cols $idx]]
+            if {[string is double -strict $v]} { return $v }
+        }
+        return 0
+    }
+
+    set lut_logic [util_row $util "LUT as Logic"      0]
+    set lut_mem   [util_row $util "LUT as Memory"     0]
+    set srl       [util_row $util "LUT as Shift Register" 0]
+    set ff        [util_row $util "Register as Flip Flop" 0]
+    set carry     [llength [get_cells -hierarchical -quiet -filter {PRIMITIVE_GROUP == CARRY}]]
+    set dsp       [util_row $util "DSPs"              0]
+    set bram36    [util_row $util "Block RAM Tile"    0]
+    set rb18      [util_row $util "RAMB18"            0]
+
+    # Pojemnosc ukladu - identyczna dla kazdego wariantu, wiec wystarczy raz.
+    set cap(LUT)  [util_row $util "LUT as Logic"          3]
+    set cap(MEM)  [util_row $util "LUT as Memory"         3]
+    set cap(FF)   [util_row $util "Register as Flip Flop" 3]
+    set cap(DSP)  [util_row $util "DSPs"                  3]
+    set cap(BRAM) [util_row $util "Block RAM Tile"        3]
+    set cap(RB18) [util_row $util "RAMB18"                3]
+    set cap(SLICE) [util_row $util "F8 Muxes"             3]
 
     # Fmax z najgorszej sciezki wewnetrznej przy zadanym okresie.
     set fmax "n/a"
@@ -132,7 +162,7 @@ foreach v $variants {
     report_timing -max_paths 3 -unique_pins -delay_type max \
                   -file $out_dir/crit_${tag}.rpt
 
-    lappend results [list $label $lut_logic $carry $ff $srl $dsp $bram $fmax $lvls]
+    lappend results [list $label $lut_logic $carry $ff $srl $dsp $bram36 $rb18 $fmax $lvls]
 }
 
 # -----------------------------------------------------------------------------
@@ -143,14 +173,27 @@ puts "CORE_COMPARISON_BEGIN"
 puts "part   $part"
 puts "period ${period} ns"
 puts ""
-puts [format "%-17s %9s %7s %7s %6s %5s %6s %10s %6s" \
-      core LUT_logic CARRY FF SRL DSP BRAM Fmax_MHz lvls]
-puts [string repeat "-" 82]
+puts [format "%-17s %9s %7s %7s %6s %5s %6s %7s %10s %6s" \
+      core LUT_logic CARRY FF SRL DSP BRAM36 RAMB18 Fmax_MHz lvls]
+puts [string repeat "-" 92]
 foreach r $results {
-    lassign $r label lut carry ff srl dsp bram fmax lvls
-    puts [format "%-17s %9d %7d %7d %6d %5d %6d %10s %6s" \
-          $label $lut $carry $ff $srl $dsp $bram $fmax $lvls]
+    lassign $r label lut carry ff srl dsp bram rb18 fmax lvls
+    puts [format "%-17s %9d %7d %7d %6d %5d %6s %7d %10s %6s" \
+          $label $lut $carry $ff $srl $dsp $bram $rb18 $fmax $lvls]
 }
+puts ""
+puts "DEVICE_CAPACITY"
+puts [format "%-17s %9d %7d %7d %6d %5d %6d %7d" \
+      "available" $cap(LUT) $cap(SLICE) $cap(FF) $cap(MEM) $cap(DSP) $cap(BRAM) $cap(RB18)]
+puts "  CARRY4 capacity = number of slices = $cap(SLICE)"
+
+# Plik CSV do dalszego przetwarzania.
+set csv [open $out_dir/resources.csv w]
+puts $csv "core,lut_logic,carry,ff,srl,dsp,bram36,ramb18,fmax_mhz,levels"
+foreach r $results { puts $csv [join $r ","] }
+puts $csv "AVAILABLE,$cap(LUT),$cap(SLICE),$cap(FF),$cap(MEM),$cap(DSP),$cap(BRAM),$cap(RB18),,"
+close $csv
+
 if {[llength $failed] > 0} {
     puts ""
     puts "NIEUDANE:"

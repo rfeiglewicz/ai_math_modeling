@@ -15,7 +15,9 @@ module bf16_expe_hybrid
     parameter bit REGISTER_STAGES = 1'b0,
     // Pad the output to this many pipeline stages so every core has the same
     // latency. 0 = natural depth. See bf16_exp2_pkg::UNIFIED_PIPE_DEPTH.
-    parameter int PIPE_TARGET     = UNIFIED_PIPE_DEPTH
+    parameter int PIPE_TARGET     = UNIFIED_PIPE_DEPTH,
+    // -GREPORT_DEPTH=1 prints the resulting pipeline depth at elaboration.
+    parameter bit REPORT_DEPTH    = 1'b0
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -30,6 +32,12 @@ module bf16_expe_hybrid
     localparam int PAD_STAGES = (REGISTER_STAGES && PIPE_TARGET > CORE_DEPTH)
                                 ? PIPE_TARGET - CORE_DEPTH : 0;
     localparam int PIPE_DEPTH = CORE_DEPTH + PAD_STAGES;
+
+    // See bf16_expe_lut.sv for why this exists.
+    if (REPORT_DEPTH) begin : gen_depth_report
+        $info("CORE_PIPE_DEPTH core=%0d pad=%0d total=%0d",
+              CORE_DEPTH, PAD_STAGES, PIPE_DEPTH);
+    end
 
     typedef enum logic [1:0] {
         ROUTE_SPARSE = 2'b00,
