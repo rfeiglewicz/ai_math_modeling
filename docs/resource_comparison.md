@@ -36,9 +36,9 @@ trasowanie, wiec po implementacji te liczby spadna.
 | expe cut | 4 | 254 | 11 | 110 | 0 | 1 | 0 | 0 | 117.0 | 12 |
 | expe cut+retime | 7 | 228 | 11 | 190 | 13 | 1 | 0 | 0 | 193.2 | 8 |
 | expe poly4 | 7 | 142 | 0 | 101 | 19 | 5 | 0 | 0 | 110.2 | 4 |
-| poly4+retime | 13 | 143 | 0 | 189 | 23 | 5 | 0 | 0 | 183.8 | 3 |
+| poly4+retime | 9 | 140 | 0 | 134 | 23 | 5 | 0 | 0 | 183.8 | 3 |
 | poly4 dsp | 8 | 80 | 0 | 105 | 19 | 6 | 0 | 0 | 155.8 | 1 |
-| poly4 dsp+retime | 13 | 82 | 0 | 200 | 23 | 6 | 0 | 0 | 163.9 | 1 |
+| poly4 dsp+retime | 12 | 80 | 0 | 160 | 19 | 6 | 0 | 0 | 194.3 | 0 |
 | **dostepne w ukladzie** | - | **134600** | **33650** | **269200** | **46200** | **740** | **365** | **730** | - | - |
 
 Kolumny: LUT = LUT jako logika; SRL = LUT jako rejestr przesuwny
@@ -58,9 +58,9 @@ pojedynczy RAMB18 to pol kafelka.
 | expe cut | 0.189 | 0.041 | 0.135 | 0 |
 | expe cut+retime | 0.169 | 0.071 | 0.135 | 0 |
 | expe poly4 | 0.105 | 0.038 | 0.676 | 0 |
-| poly4+retime | 0.106 | 0.07 | 0.676 | 0 |
+| poly4+retime | 0.104 | 0.05 | 0.676 | 0 |
 | poly4 dsp | 0.059 | 0.039 | 0.811 | 0 |
-| poly4 dsp+retime | 0.061 | 0.074 | 0.811 | 0 |
+| poly4 dsp+retime | 0.059 | 0.059 | 0.811 | 0 |
 
 Zaden rdzen nie przekracza **1%** zadnego zasobu ukladu. Przy takich
 rozmiarach o wyborze nie decyduje zajetosc, tylko Fmax, liczba DSP i to,
@@ -82,9 +82,9 @@ wspoldzielic i realna liczba bylaby wieksza.
 | expe cut | 529 | 2447 | 740 | - | **529** |
 | expe cut+retime | 590 | 1416 | 740 | - | **590** |
 | expe poly4 | 947 | 2665 | 148 | - | **148** |
-| poly4+retime | 941 | 1424 | 148 | - | **148** |
+| poly4+retime | 961 | 2008 | 148 | - | **148** |
 | poly4 dsp | 1682 | 2563 | 123 | - | **123** |
-| poly4 dsp+retime | 1641 | 1346 | 123 | - | **123** |
+| poly4 dsp+retime | 1682 | 1682 | 123 | - | **123** |
 
 ## Koszt ujednolicenia latencji
 
@@ -100,6 +100,9 @@ zbijalo Fmax z 283.4 na 254.1 MHz przy niezmienionym opoznieniu logiki.
 
 Pomiary kosztu dopelniania: `docs/pipe_target_comparison.md`.
 
+Ile rdzeni zmiesci sie w ukladzie i jaka daja laczna przepustowosc:
+`docs/throughput_analysis.md`.
+
 | rdzen | stopnie wlasne | do dopelnienia |
 |---|---:|---:|
 | exp2 baseline | 7 | 9 |
@@ -110,7 +113,7 @@ Pomiary kosztu dopelniania: `docs/pipe_target_comparison.md`.
 | expe cut | 4 | 12 |
 | expe cut+retime | 7 | 9 |
 | expe poly4 | 7 | 9 |
-| poly4+retime | 13 | 3 |
+| poly4+retime | 9 | 7 |
 | poly4 dsp | 8 | 8 |
-| poly4 dsp+retime | 13 | 3 |
+| poly4 dsp+retime | 12 | 4 |
 

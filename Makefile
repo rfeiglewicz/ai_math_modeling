@@ -267,6 +267,13 @@ sweep_pipe_targets: gen_expe_lut_rom gen_expe_hybrid_tables gen_expe_cut_tables 
 pipe_target_table:
 	@python3 scripts/make_pipe_target_table.py
 
+# docs/throughput_analysis.md: ile rdzeni zmiesci sie w ukladzie i jaka daja
+# laczna przepustowosc. Czyta resources.csv + pipe_target_sweep.csv, wiec
+# wymaga wczesniejszego `make compare_cores` i `make sweep_pipe_targets`.
+# Solwer calkowitoliczbowy potrzebuje scipy (HiGHS).
+throughput_table:
+	@python3 scripts/make_throughput_table.py
+
 # Weryfikacja funkcjonalna wszystkich rdzeni (Verilator, wyczerpujaca).
 # Rdzenie maja rozne testbenche, wiec podsumowanie filtrujemy po obu formatach:
 # "checked=/OVERALL" (exp2, lut) oraz "Checked:/Mismatches:" (hybrid, cut, poly4).

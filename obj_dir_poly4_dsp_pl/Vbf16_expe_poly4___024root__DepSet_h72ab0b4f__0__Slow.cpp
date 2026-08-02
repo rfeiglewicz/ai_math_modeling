@@ -103,6 +103,9 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___stl_sequent__TOP__0(Vbf16_expe_po
     vlSelf->bf16_expe_poly4__DOT__ctrl_eo[0U] = vlSelf->bf16_expe_poly4__DOT__s2_eo;
     vlSelf->bf16_expe_poly4__DOT__ctrl_int[0U] = vlSelf->bf16_expe_poly4__DOT__s2_int_part;
     vlSelf->bf16_expe_poly4__DOT__ctrl_frac[0U] = vlSelf->bf16_expe_poly4__DOT__s2_frac;
+    vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__scaled_comb 
+        = (0x1ffffffffffULL & ((QData)((IData)(vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_t7)) 
+                               * (QData)((IData)(vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_onehot))));
     vlSelf->bf16_expe_poly4__DOT__ctrl_tail[0U] = (
                                                    (0xaU 
                                                     >= (IData)(vlSelf->bf16_expe_poly4__DOT__s2_tail_addr))
@@ -136,10 +139,13 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___stl_sequent__TOP__0(Vbf16_expe_po
     vlSelf->s_axis_tready = (1U & ((~ (IData)(vlSelf->m_axis_tvalid)) 
                                    | (IData)(vlSelf->m_axis_tready)));
     vlSelf->m_axis_tdata = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
-        [2U];
+        [3U];
     vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt 
         = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [1U];
+    vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt 
+        = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
+        [2U];
 }
 
 VL_ATTR_COLD void Vbf16_expe_poly4___024root___eval_stl(Vbf16_expe_poly4___024root* vlSelf) {
@@ -261,10 +267,7 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___ctor_var_reset(Vbf16_expe_poly4__
     vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_route = VL_RAND_RESET_I(2);
     vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_tail = VL_RAND_RESET_I(4);
     vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_eo = VL_RAND_RESET_I(2);
-    vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_aligned = VL_RAND_RESET_I(26);
-    vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_route = VL_RAND_RESET_I(2);
-    vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_tail = VL_RAND_RESET_I(4);
-    vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_eo = VL_RAND_RESET_I(2);
+    vlSelf->bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__scaled_comb = VL_RAND_RESET_Q(41);
     vlSelf->bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__0__KET____DOT__u_step__acc_out = VL_RAND_RESET_I(25);
     vlSelf->bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__1__KET____DOT__u_step__acc_out = VL_RAND_RESET_I(25);
     vlSelf->bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__2__KET____DOT__u_step__acc_out = VL_RAND_RESET_I(25);
@@ -274,11 +277,12 @@ VL_ATTR_COLD void Vbf16_expe_poly4___024root___ctor_var_reset(Vbf16_expe_poly4__
     for (int __Vi0 = 0; __Vi0 < 11; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__u_tail_rom__DOT__rom[__Vi0] = VL_RAND_RESET_I(7);
     }
-    for (int __Vi0 = 0; __Vi0 < 3; ++__Vi0) {
+    for (int __Vi0 = 0; __Vi0 < 4; ++__Vi0) {
         vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[__Vi0] = VL_RAND_RESET_I(16);
     }
     vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__0__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);
     vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__1__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);
     vlSelf->bf16_expe_poly4__DOT__gen_horner__BRA__2__KET____DOT__u_step__DOT__mult_r = VL_RAND_RESET_Q(43);

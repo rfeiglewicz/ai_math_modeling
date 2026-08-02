@@ -43,8 +43,8 @@ set variants [list \
   [list "expe full-lut"    bf16_expe_lut    $src_lut    "" 4] \
   [list "expe hybrid"      bf16_expe_hybrid $src_hybrid "" 4] \
   [list "expe cut+retime"  bf16_expe_cut    $src_cut    "RETIME_CUT=2 RETIME_FE=1" 7] \
-  [list "poly4+retime"     bf16_expe_poly4  $src_poly4  "RETIME_MULT=1 RETIME_FE=2" 13] \
-  [list "poly4 dsp+retime" bf16_expe_poly4  $src_poly4  "DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=1 RETIME_FE=2" 13] \
+  [list "poly4+retime"     bf16_expe_poly4  $src_poly4  "RETIME_MULT=0 RETIME_FE=2" 9] \
+  [list "poly4 dsp+retime" bf16_expe_poly4  $src_poly4  "DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=1 RETIME_FE=1" 12] \
 ]
 
 # Wiersz z report_utilization: | Nazwa | Used | Fixed | Prohibited | Available |

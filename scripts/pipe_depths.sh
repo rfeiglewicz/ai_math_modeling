@@ -48,7 +48,7 @@ probe "expe hybrid"      bf16_expe_hybrid "$SRC_HYB"
 probe "expe cut"         bf16_expe_cut    "$SRC_CUT" -GRETIME_CUT=0 -GRETIME_FE=0
 probe "expe cut+retime"  bf16_expe_cut    "$SRC_CUT" -GRETIME_CUT=2 -GRETIME_FE=1
 probe "expe poly4"       bf16_expe_poly4  "$SRC_P4"  -GRETIME_MULT=0 -GRETIME_FE=0
-probe "poly4+retime"     bf16_expe_poly4  "$SRC_P4"  -GRETIME_MULT=1 -GRETIME_FE=2
+probe "poly4+retime"     bf16_expe_poly4  "$SRC_P4"  -GRETIME_MULT=0 -GRETIME_FE=2
 probe "poly4 dsp"        bf16_expe_poly4  "$SRC_P4"  -GDSP_FRONTEND=1 -GRESET_DATAPATH=0 -GRETIME_MULT=0 -GRETIME_FE=0
-probe "poly4 dsp+retime" bf16_expe_poly4  "$SRC_P4"  -GDSP_FRONTEND=1 -GRESET_DATAPATH=0 -GRETIME_MULT=1 -GRETIME_FE=2
+probe "poly4 dsp+retime" bf16_expe_poly4  "$SRC_P4"  -GDSP_FRONTEND=1 -GRESET_DATAPATH=0 -GRETIME_MULT=1 -GRETIME_FE=1
 echo "PIPE_DEPTH_END"

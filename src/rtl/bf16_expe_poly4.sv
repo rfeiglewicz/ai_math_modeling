@@ -140,7 +140,8 @@ module bf16_expe_poly4
     parameter bit REPORT_DEPTH     = 1'b0,
     // Retiming: extra register per Horner step (DSP48E1 MREG). Bit-exact,
     // costs DEGREE extra cycles of latency in total.
-    parameter int RETIME_MULT      = 1,
+    // -1 = pick the measured optimum for the selected front end (see below).
+    parameter int RETIME_MULT      = -1,
     // Retiming for the front end:
     //   1 splits the constant multiply from the alignment shift. The DSP front
     //     end already has this register (see FE_EXTRA), which is most of why it
@@ -149,7 +150,8 @@ module bf16_expe_poly4
     //     multiply, which Vivado otherwise merges by absorbing the stage-2
     //     register into the DSP A port.
     // Bit-exact; each level costs one cycle.
-    parameter int RETIME_FE        = 2
+    // -1 = pick the measured optimum for the selected front end (see below).
+    parameter int RETIME_FE        = -1
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -160,17 +162,46 @@ module bf16_expe_poly4
     output logic        m_axis_tvalid,
     input  logic        m_axis_tready
 );
+    // Default retiming, per front end.  Both optima were measured with
+    // scripts/sweep_retime_configs.tcl on xc7a200tfbg484-1, post-synthesis,
+    // PIPE_TARGET = 0 (the padding stages provably cost 0 MHz, see
+    // docs/pipe_target_comparison.md).  Fmax in MHz / core stages:
+    //
+    //   fabric front end (DSP_FRONTEND = 0)   DSP front end (DSP_FRONTEND = 1)
+    //     M0 F0  110.2 /  7                     M0 F0  155.8 /  8
+    //     M0 F1  148.8 /  8                     M0 F1  155.8 /  8
+    //     M0 F2  183.8 /  9  <- best            M0 F2  163.9 /  9
+    //     M1 F0  111.3 / 11                     M1 F0  194.3 / 12
+    //     M1 F1  150.8 / 12                     M1 F1  194.3 / 12  <- best
+    //     M1 F2  183.8 / 13                     M1 F2  163.9 / 13
+    //
+    // Two things fall out of that table and are the reason the defaults are
+    // per-front-end instead of one shared pair of numbers:
+    //   * On the fabric front end RETIME_MULT buys nothing once RETIME_FE = 2:
+    //     M0 F2 and M1 F2 are both 183.8 MHz, so M1 only costs 4 cycles and
+    //     55 flip-flops.  The Horner multiply is not the critical path there,
+    //     the CSD tree plus barrel shifter in front of it is.
+    //   * On the DSP front end it is the other way round.  RETIME_MULT is what
+    //     pays (155.8 -> 194.3) because the path really is DSP to DSP, and
+    //     RETIME_FE = 2 actively hurts (194.3 -> 163.9): the front-end DSP
+    //     already registers its output in PREG, so the second cut only inserts
+    //     fabric between two DSPs that were happily talking directly.
+    localparam int RMULT_DEF = DSP_FRONTEND ? 1 : 0;
+    localparam int RFE_DEF   = DSP_FRONTEND ? 1 : 2;
+    localparam int RMULT     = (RETIME_MULT < 0) ? RMULT_DEF : RETIME_MULT;
+    localparam int RFE       = (RETIME_FE   < 0) ? RFE_DEF   : RETIME_FE;
+
     // Both front ends get one register between the multiply and the shift: the
     // DSP one needs it because the one-hot scaling and the wide multiply cannot
     // share a stage, the fabric one because the CSD tree plus barrel shifter is
     // otherwise the longest path in the core.
-    localparam int FE_EXTRA  = (REGISTER_STAGES && (DSP_FRONTEND || RETIME_FE >= 1)) ? 1 : 0;
-    localparam bit FE_STAGE2 = (REGISTER_STAGES && RETIME_FE >= 2);
+    localparam int FE_EXTRA  = (REGISTER_STAGES && (DSP_FRONTEND || RFE >= 1)) ? 1 : 0;
+    localparam bit FE_STAGE2 = (REGISTER_STAGES && RFE >= 2);
     localparam int FE_DEPTH  = FE_EXTRA + (FE_STAGE2 ? 1 : 0);
 
     // decompose + align + DEGREE Horner steps + output register.
     // With RETIME_MULT each Horner step occupies STEP_DEPTH stages instead of 1.
-    localparam int MSTG       = REGISTER_STAGES ? RETIME_MULT : 0;
+    localparam int MSTG       = REGISTER_STAGES ? RMULT : 0;
     localparam int STEP_DEPTH = REGISTER_STAGES ? (1 + MSTG) : 1;
     localparam int CTRL_LEN   = DEGREE * STEP_DEPTH;
     localparam int CORE_DEPTH = REGISTER_STAGES ? (3 + FE_DEPTH + CTRL_LEN) : 0;

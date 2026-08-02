@@ -102,9 +102,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         CData/*1:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__fe1_route;
         CData/*3:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__fe1_tail;
         CData/*1:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__fe1_eo;
-        CData/*1:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_fe2_reg__DOT__fe2_route;
-        CData/*3:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_fe2_reg__DOT__fe2_tail;
-        CData/*1:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_fe2_reg__DOT__fe2_eo;
         CData/*0:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_decompose__DOT__hidden_bit_comb;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v0;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v1;
@@ -144,45 +141,13 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         CData/*6:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v3;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v3;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v3;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v4;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v4;
-    };
-    struct {
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v4;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v4;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v4;
-        CData/*6:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v4;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v4;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v4;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v5;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v5;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v5;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v5;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v5;
-        CData/*6:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v5;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v5;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v5;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v6;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v6;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v6;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v6;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v6;
-        CData/*6:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v6;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v6;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v6;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v7;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo__v7;
-        CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v7;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route__v7;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v7;
-        CData/*6:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v7;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail__v7;
-        CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v7;
         CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_eo__v0;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_eo__v0;
         CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_route__v0;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_route__v0;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_int__v0;
+    };
+    struct {
         CData/*6:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_tail__v0;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_tail__v0;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_frac__v0;
@@ -212,8 +177,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_frac__v3;
         CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_eo__v4;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_eo__v4;
-    };
-    struct {
         CData/*1:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_route__v4;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_route__v4;
         CData/*0:0*/ __Vdlyvset__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_int__v4;
@@ -249,6 +212,8 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         CData/*0:0*/ __Vtrigprevexpr___TOP__clk__0;
         CData/*0:0*/ __Vtrigprevexpr___TOP__rst_n__0;
         CData/*0:0*/ __VactContinue;
+    };
+    struct {
         VL_IN16(s_axis_tdata,15,0);
         VL_OUT16(o_exp2_tdata,15,0);
         VL_OUT16(o_exp2opt_tdata,15,0);
@@ -278,8 +243,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_normalize__DOT__msb_idx_comb;
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_normalize__DOT__msb_idx_s;
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_round__DOT__final_exponent;
-    };
-    struct {
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_round__DOT__shift_9;
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_round__DOT__p1_final_exp;
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_round__DOT__p1_shift;
@@ -315,6 +278,8 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__5__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__6__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__7__KET____DOT__nxt;
+    };
+    struct {
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__8__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__9__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__10__KET____DOT__nxt;
@@ -344,16 +309,19 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__s2_int_part;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__core_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__gen_axi_pipelined__DOT__valid_sr;
-    };
-    struct {
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__5__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__6__KET____DOT__nxt;
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__s2_int_part;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__core_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_axi_pipelined__DOT__valid_sr;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__fe1_onehot;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v0;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v2;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v4;
@@ -361,10 +329,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v1;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v2;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v3;
-        SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v4;
-        SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v5;
-        SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v6;
-        SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int__v7;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_int__v0;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_int__v1;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_int__v2;
@@ -380,6 +344,8 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         IData/*30:0*/ bf16_expe_equiv_top__DOT__u_exp2__DOT__u_log2e_mult__DOT__mant_mult;
         IData/*30:0*/ bf16_expe_equiv_top__DOT__u_exp2__DOT__u_log2e_mult__DOT__gen_rne_reg__DOT__mant_rne_q;
         IData/*20:0*/ bf16_expe_equiv_top__DOT__u_exp2__DOT__u_lin_approx__DOT__coeff_b_stage;
+    };
+    struct {
         IData/*20:0*/ bf16_expe_equiv_top__DOT__u_exp2__DOT__u_lin_approx__DOT__gen_split_mult__DOT__gen_merge_reg__DOT__coeff_b_d;
         IData/*21:0*/ bf16_expe_equiv_top__DOT__u_exp2__DOT__u_round__DOT__rounded_comb;
         IData/*21:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__s1_decomposed;
@@ -408,10 +374,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         IData/*21:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__s1_decomposed;
         IData/*16:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__s2_frac;
         IData/*24:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__fe1_t7;
-        IData/*25:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_fe2_reg__DOT__fe2_aligned;
         IData/*24:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT____Vcellout__gen_horner__BRA__0__KET____DOT__u_step__acc_out;
-    };
-    struct {
         IData/*24:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT____Vcellout__gen_horner__BRA__1__KET____DOT__u_step__acc_out;
         IData/*24:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT____Vcellout__gen_horner__BRA__2__KET____DOT__u_step__acc_out;
         IData/*24:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT____Vcellout__gen_horner__BRA__3__KET____DOT__u_step__acc_out;
@@ -419,10 +382,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v1;
         IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v2;
         IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v3;
-        IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v4;
-        IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v5;
-        IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v6;
-        IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac__v7;
         IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_frac__v0;
         IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_frac__v1;
         IData/*16:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_frac__v2;
@@ -451,16 +410,15 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         QData/*32:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_unified_shift__DOT__gen_shift_dsp__DOT__lo_prod_s;
         QData/*41:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__packed_coeff;
         QData/*37:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__frac_aligned;
+    };
+    struct {
         QData/*61:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__calc_res;
         QData/*50:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__gen_split_mult__DOT__merged;
         QData/*50:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__gen_split_mult__DOT__gen_merge_reg__DOT__merged_q;
         QData/*61:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_normalize__DOT__res_s;
         QData/*58:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_normalize__DOT__poly_mant_comb;
         QData/*58:0*/ bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_round__DOT__p1_mant;
-        QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__gen_horner__BRA__0__KET____DOT__u_step__DOT__mult_r;
-        QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__gen_horner__BRA__1__KET____DOT__u_step__DOT__mult_r;
-        QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__gen_horner__BRA__2__KET____DOT__u_step__DOT__mult_r;
-        QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__gen_horner__BRA__3__KET____DOT__u_step__DOT__mult_r;
+        QData/*40:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__scaled_comb;
         QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_horner__BRA__0__KET____DOT__u_step__DOT__mult_r;
         QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_horner__BRA__1__KET____DOT__u_step__DOT__mult_r;
         QData/*42:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_horner__BRA__2__KET____DOT__u_step__DOT__mult_r;
@@ -476,8 +434,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         VlUnpacked<CData/*1:0*/, 14> bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__eo_delay;
         VlUnpacked<QData/*35:0*/, 2> bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__gen_split_mult__DOT__part_comb;
         VlUnpacked<QData/*35:0*/, 2> bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__gen_split_mult__DOT__part_reg;
-    };
-    struct {
         VlUnpacked<QData/*41:0*/, 128> bf16_expe_equiv_top__DOT__u_exp2_opt__DOT__u_lin_approx__DOT__u_coeff_rom__DOT__rom;
         VlUnpacked<CData/*1:0*/, 2> bf16_expe_equiv_top__DOT__u_lut__DOT__eo_delay;
         VlUnpacked<SData/*15:0*/, 2176> bf16_expe_equiv_top__DOT__u_lut__DOT__u_rom__DOT__rom;
@@ -488,20 +444,20 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         VlUnpacked<CData/*6:0*/, 11> bf16_expe_equiv_top__DOT__u_cut__DOT__u_tail_rom__DOT__rom;
         VlUnpacked<SData/*12:0*/, 128> bf16_expe_equiv_top__DOT__u_cut__DOT__u_cut_rom__DOT__rom;
         VlUnpacked<SData/*15:0*/, 9> bf16_expe_equiv_top__DOT__u_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
-        VlUnpacked<CData/*1:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo;
-        VlUnpacked<CData/*1:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route;
-        VlUnpacked<SData/*8:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int;
-        VlUnpacked<CData/*6:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail;
-        VlUnpacked<IData/*16:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac;
+        VlUnpacked<CData/*1:0*/, 5> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_eo;
+        VlUnpacked<CData/*1:0*/, 5> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_route;
+        VlUnpacked<SData/*8:0*/, 5> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_int;
+        VlUnpacked<CData/*6:0*/, 5> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_tail;
+        VlUnpacked<IData/*16:0*/, 5> bf16_expe_equiv_top__DOT__u_poly4__DOT__ctrl_frac;
         VlUnpacked<CData/*6:0*/, 11> bf16_expe_equiv_top__DOT__u_poly4__DOT__u_tail_rom__DOT__rom;
-        VlUnpacked<SData/*15:0*/, 3> bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
+        VlUnpacked<SData/*15:0*/, 7> bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
         VlUnpacked<CData/*1:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_eo;
         VlUnpacked<CData/*1:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_route;
         VlUnpacked<SData/*8:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_int;
         VlUnpacked<CData/*6:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_tail;
         VlUnpacked<IData/*16:0*/, 9> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__ctrl_frac;
         VlUnpacked<CData/*6:0*/, 11> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_tail_rom__DOT__rom;
-        VlUnpacked<SData/*15:0*/, 3> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
+        VlUnpacked<SData/*15:0*/, 4> bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
     };
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;

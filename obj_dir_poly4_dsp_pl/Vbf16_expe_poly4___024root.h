@@ -28,9 +28,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
         CData/*1:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_route;
         CData/*3:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_tail;
         CData/*1:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_eo;
-        CData/*1:0*/ bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_route;
-        CData/*3:0*/ bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_tail;
-        CData/*1:0*/ bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_eo;
         CData/*3:0*/ bf16_expe_poly4__DOT__u_decompose__DOT__status_comb;
         CData/*0:0*/ bf16_expe_poly4__DOT__u_decompose__DOT__hidden_bit_comb;
         CData/*1:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_eo__v0;
@@ -80,11 +77,11 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
         CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__ctrl_int__v5;
         CData/*6:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_tail__v5;
         CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__ctrl_tail__v5;
-    };
-    struct {
         CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__ctrl_frac__v5;
         CData/*1:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_eo__v6;
         CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__ctrl_eo__v6;
+    };
+    struct {
         CData/*1:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_route__v6;
         CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__ctrl_route__v6;
         CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__ctrl_int__v6;
@@ -112,6 +109,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
         SData/*15:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_onehot;
         SData/*15:0*/ bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
         SData/*8:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_int__v0;
         SData/*8:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_int__v1;
         SData/*8:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_int__v2;
@@ -123,7 +121,6 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
         IData/*21:0*/ bf16_expe_poly4__DOT__s1_decomposed;
         IData/*16:0*/ bf16_expe_poly4__DOT__s2_frac;
         IData/*24:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__fe1_t7;
-        IData/*25:0*/ bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_aligned;
         IData/*24:0*/ bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__0__KET____DOT__u_step__acc_out;
         IData/*24:0*/ bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__1__KET____DOT__u_step__acc_out;
         IData/*24:0*/ bf16_expe_poly4__DOT____Vcellout__gen_horner__BRA__2__KET____DOT__u_step__acc_out;
@@ -137,6 +134,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
         IData/*16:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_frac__v6;
         IData/*16:0*/ __Vdlyvval__bf16_expe_poly4__DOT__ctrl_frac__v7;
         IData/*31:0*/ __VactIterCount;
+        QData/*40:0*/ bf16_expe_poly4__DOT__gen_frontend_dsp__DOT__scaled_comb;
         QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__0__KET____DOT__u_step__DOT__mult_r;
         QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__1__KET____DOT__u_step__DOT__mult_r;
         QData/*42:0*/ bf16_expe_poly4__DOT__gen_horner__BRA__2__KET____DOT__u_step__DOT__mult_r;
@@ -146,10 +144,8 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_poly4___024root final : public Ver
         VlUnpacked<SData/*8:0*/, 9> bf16_expe_poly4__DOT__ctrl_int;
         VlUnpacked<CData/*6:0*/, 9> bf16_expe_poly4__DOT__ctrl_tail;
         VlUnpacked<IData/*16:0*/, 9> bf16_expe_poly4__DOT__ctrl_frac;
-    };
-    struct {
         VlUnpacked<CData/*6:0*/, 11> bf16_expe_poly4__DOT__u_tail_rom__DOT__rom;
-        VlUnpacked<SData/*15:0*/, 3> bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
+        VlUnpacked<SData/*15:0*/, 4> bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain;
     };
     VlTriggerVec<1> __VstlTriggered;
     VlTriggerVec<1> __VicoTriggered;

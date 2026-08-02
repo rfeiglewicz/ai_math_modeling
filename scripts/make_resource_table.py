@@ -164,6 +164,9 @@ def main():
     A("")
     A("Pomiary kosztu dopelniania: `docs/pipe_target_comparison.md`.")
     A("")
+    A("Ile rdzeni zmiesci sie w ukladzie i jaka daja laczna przepustowosc:")
+    A("`docs/throughput_analysis.md`.")
+    A("")
     A("| rdzen | stopnie wlasne | do dopelnienia |")
     A("|---|---:|---:|")
     for r in cores:

@@ -72,9 +72,9 @@ set variants [list \
   [list "expe cut"         bf16_expe_cut    $src_cut    "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_CUT=0 RETIME_FE=0"] \
   [list "expe cut+retime"  bf16_expe_cut    $src_cut    "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_CUT=2 RETIME_FE=1"] \
   [list "expe poly4"       bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_MULT=0 RETIME_FE=0"] \
-  [list "poly4+retime"     bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_MULT=1 RETIME_FE=2"] \
+  [list "poly4+retime"     bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_MULT=0 RETIME_FE=2"] \
   [list "poly4 dsp"        bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=0 RETIME_FE=0"] \
-  [list "poly4 dsp+retime" bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=1 RETIME_FE=2"] \
+  [list "poly4 dsp+retime" bf16_expe_poly4  $src_poly4  "REGISTER_STAGES=1 PIPE_TARGET=0 DSP_FRONTEND=1 RESET_DATAPATH=0 RETIME_MULT=1 RETIME_FE=1"] \
 ]
 
 set results {}
