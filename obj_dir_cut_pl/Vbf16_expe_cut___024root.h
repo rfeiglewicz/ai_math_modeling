@@ -62,7 +62,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_cut___024root final : public Veril
     SData/*8:0*/ bf16_expe_cut__DOT__s5_int_part;
     SData/*15:0*/ bf16_expe_cut__DOT__core_data;
     SData/*15:0*/ bf16_expe_cut__DOT__gen_axi_pipelined__DOT__valid_sr;
-    SData/*15:0*/ bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
     SData/*15:0*/ bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt;

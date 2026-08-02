@@ -291,7 +291,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__s3_rom_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__core_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__gen_axi_pipelined__DOT__vld_sr;
-        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt;
@@ -308,7 +308,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__core_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_sparse__DOT__data_comb;
-        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt;
@@ -333,7 +333,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__s5_int_part;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__core_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__gen_axi_pipelined__DOT__valid_sr;
-        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_cut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt;
@@ -346,13 +346,13 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_equiv_top___024root final : public
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__gen_axi_pipelined__DOT__valid_sr;
     };
     struct {
-        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
         SData/*8:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__s2_int_part;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__core_data;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_axi_pipelined__DOT__valid_sr;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__gen_frontend_dsp__DOT__fe1_onehot;
-        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+        SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         SData/*15:0*/ bf16_expe_equiv_top__DOT__u_poly4_dsp__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v0;
         SData/*8:0*/ __Vdlyvval__bf16_expe_equiv_top__DOT__u_exp2__DOT__exp_delay__v2;

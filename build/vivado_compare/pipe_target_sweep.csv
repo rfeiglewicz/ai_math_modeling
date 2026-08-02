@@ -1,0 +1,16 @@
+pipe_target,core,stages,pad,lut_logic,carry,ff,srl,dsp,bram36,fmax_mhz,levels,note
+4,expe full-lut,4,0,40,0,54,0,0,2,283.4,1,
+4,expe hybrid,4,0,107,0,64,0,0,0.5,250.3,3,
+4,expe cut+retime,7,0,228,11,190,13,1,0,193.2,8,za plytki target
+4,poly4+retime,13,0,143,0,189,23,5,0,183.8,3,za plytki target
+4,poly4 dsp+retime,13,0,82,0,200,23,6,0,163.9,1,za plytki target
+8,expe full-lut,8,4,40,0,122,0,0,2,283.4,1,
+8,expe hybrid,8,4,107,0,132,0,0,0.5,250.3,3,
+8,expe cut+retime,8,1,228,11,207,13,1,0,193.2,8,
+8,poly4+retime,13,0,143,0,189,23,5,0,183.8,3,za plytki target
+8,poly4 dsp+retime,13,0,82,0,200,23,6,0,163.9,1,za plytki target
+13,expe full-lut,13,9,57,0,112,17,0,2,283.4,1,
+13,expe hybrid,13,9,124,0,122,17,0,0.5,250.3,3,
+13,expe cut+retime,13,6,244,11,244,29,1,0,193.2,8,
+13,poly4+retime,13,0,143,0,189,23,5,0,183.8,3,
+13,poly4 dsp+retime,13,0,82,0,200,23,6,0,163.9,1,

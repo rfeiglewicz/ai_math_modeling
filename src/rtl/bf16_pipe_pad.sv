@@ -13,12 +13,23 @@
 // data is only ever consumed when the accompanying valid bit is high, and the
 // valid shift register in the parent core IS reset. Without the reset Vivado
 // is free to implement the chain as an SRL16E instead of discrete flip-flops.
+//
+// HEAD_FF = 1 keeps the FIRST stage as a discrete flip-flop instead of letting
+// it join the SRL. This is not cosmetic: an SRL16E has a worse setup time than
+// a flip-flop and sits in a fixed slice position, and Vivado will happily pull
+// the CORE's output register into the chain as well. Measured on expe full-lut,
+// where the whole path is BRAM -> LUT3 -> register: padding from 4 to 8 stages
+// dropped Fmax from 283.4 to 254.1 MHz with the logic delay unchanged at
+// 2.578 ns, purely because the endpoint became an SRL input. With HEAD_FF the
+// core's own output register stays a flip-flop and the loss goes away, at a
+// cost of WIDTH flip-flops.
 // =============================================================================
 
 module bf16_pipe_pad #(
     parameter int STAGES         = 0,
     parameter int WIDTH          = 16,
-    parameter bit RESET_DATAPATH = 1'b1
+    parameter bit RESET_DATAPATH = 1'b1,
+    parameter bit HEAD_FF        = 1'b1
 )(
     input  logic             clk,
     input  logic             rst_n,
@@ -39,7 +50,28 @@ module bf16_pipe_pad #(
                 logic [WIDTH-1:0] nxt;
                 assign nxt = (i == 0) ? d : chain[i-1];
 
-                if (RESET_DATAPATH) begin : gen_reg_rst
+                // The chain that Vivado sees is longer than this module: it
+                // starts at the PARENT core's output register. Left alone it
+                // packs the whole thing into an SRL16E and puts the SRL first,
+                // so the core's combinational output drives an SRL D pin
+                // directly. dont_touch on this stage is what actually blocks
+                // that, srl_style alone is not enough (measured).
+                if (HEAD_FF && i == 0) begin : gen_head
+                    (* dont_touch = "true" *) logic [WIDTH-1:0] head;
+
+                    if (RESET_DATAPATH) begin : gen_rst
+                        always_ff @(posedge clk or negedge rst_n) begin
+                            if (!rst_n)       head <= '0;
+                            else if (pipe_en) head <= nxt;
+                        end
+                    end else begin : gen_nrst
+                        always_ff @(posedge clk) begin
+                            if (pipe_en) head <= nxt;
+                        end
+                    end
+
+                    always_comb chain[i] = head;
+                end else if (RESET_DATAPATH) begin : gen_reg_rst
                     always_ff @(posedge clk or negedge rst_n) begin
                         if (!rst_n)       chain[i] <= '0;
                         else if (pipe_en) chain[i] <= nxt;

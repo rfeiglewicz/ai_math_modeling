@@ -97,13 +97,8 @@ VL_INLINE_OPT void Vbf16_expe_poly4___024root___nba_sequent__TOP__1(Vbf16_expe_p
     __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 0;
     CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1;
     __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 0;
-    SData/*15:0*/ __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2;
-    __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 0;
-    CData/*0:0*/ __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2;
-    __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 0;
     // Body
     __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 0U;
-    __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 0U;
     vlSelf->__Vdlyvset__bf16_expe_poly4__DOT__ctrl_int__v0 = 0U;
     vlSelf->__Vdlyvset__bf16_expe_poly4__DOT__ctrl_int__v1 = 0U;
     vlSelf->__Vdlyvset__bf16_expe_poly4__DOT__ctrl_int__v2 = 0U;
@@ -147,11 +142,8 @@ VL_INLINE_OPT void Vbf16_expe_poly4___024root___nba_sequent__TOP__1(Vbf16_expe_p
     __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 = 0U;
     if (vlSelf->s_axis_tready) {
         __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 
-            = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
-        __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 1U;
-        __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 
             = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
-        __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2 = 1U;
+        __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1 = 1U;
         vlSelf->__Vdlyvval__bf16_expe_poly4__DOT__ctrl_int__v0 
             = vlSelf->bf16_expe_poly4__DOT__ctrl_int
             [0U];
@@ -313,7 +305,7 @@ VL_INLINE_OPT void Vbf16_expe_poly4___024root___nba_sequent__TOP__1(Vbf16_expe_p
             [7U];
         vlSelf->__Vdlyvset__bf16_expe_poly4__DOT__ctrl_frac__v7 = 1U;
         __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 
-            = vlSelf->bf16_expe_poly4__DOT__core_data;
+            = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
         __Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0 = 1U;
         vlSelf->bf16_expe_poly4__DOT__s2_eo = vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_eo;
         vlSelf->bf16_expe_poly4__DOT__s2_route = vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_route;
@@ -322,6 +314,8 @@ VL_INLINE_OPT void Vbf16_expe_poly4___024root___nba_sequent__TOP__1(Vbf16_expe_p
         vlSelf->bf16_expe_poly4__DOT__s2_int_part = 
             (0x1ffU & (vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_aligned 
                        >> 0x11U));
+        vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head 
+            = vlSelf->bf16_expe_poly4__DOT__core_data;
         vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_eo 
             = vlSelf->bf16_expe_poly4__DOT__gen_frontend_barrel__DOT__fe1_eo;
         vlSelf->bf16_expe_poly4__DOT__gen_fe2_reg__DOT__fe2_route 
@@ -367,22 +361,17 @@ VL_INLINE_OPT void Vbf16_expe_poly4___024root___nba_sequent__TOP__1(Vbf16_expe_p
                         >> 5U) - (IData)(0xfU)));
     }
     if (__Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0) {
-        vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[0U] 
+        vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[1U] 
             = __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v0;
     }
     if (__Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1) {
-        vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[1U] 
+        vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[2U] 
             = __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v1;
     }
-    if (__Vdlyvset__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2) {
-        vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[2U] 
-            = __Vdlyvval__bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain__v2;
-    }
+    vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[0U] 
+        = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
     vlSelf->m_axis_tdata = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [2U];
-    vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt 
-        = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
-        [0U];
     vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt 
         = vlSelf->bf16_expe_poly4__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [1U];

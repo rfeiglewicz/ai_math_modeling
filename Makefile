@@ -243,7 +243,8 @@ sweep_exp2:
 # =========================================================================
 # Porownanie wszystkich implementacji obok siebie
 # =========================================================================
-.PHONY: compare_cores compare_cores_verify compare_all pipe_depths resource_table
+.PHONY: compare_cores compare_cores_verify compare_all pipe_depths resource_table \
+        sweep_pipe_targets pipe_target_table
 
 # Synteza wszystkich rdzeni w jednym przebiegu -> jedna tabela zasobow.
 compare_cores: gen_expe_lut_rom gen_expe_hybrid_tables gen_expe_cut_tables gen_expe_poly4_tables
@@ -257,6 +258,14 @@ pipe_depths:
 # Wymaga wczesniejszego `make compare_cores` (zapisuje resources.csv).
 resource_table:
 	@python3 scripts/make_resource_table.py
+
+# Ten sam rdzen przy roznych PIPE_TARGET -> ile kosztuje dopelnianie potoku.
+# PIPE_TARGETS="4 8 13" zeby zmienic zestaw.
+sweep_pipe_targets: gen_expe_lut_rom gen_expe_hybrid_tables gen_expe_cut_tables gen_expe_poly4_tables
+	$(VIVADO) -mode batch -nojournal -nolog -source scripts/sweep_pipe_targets.tcl
+
+pipe_target_table:
+	@python3 scripts/make_pipe_target_table.py
 
 # Weryfikacja funkcjonalna wszystkich rdzeni (Verilator, wyczerpujaca).
 # Rdzenie maja rozne testbenche, wiec podsumowanie filtrujemy po obu formatach:

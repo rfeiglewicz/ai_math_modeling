@@ -1054,11 +1054,38 @@ VL_ATTR_COLD void Vbf16_expe_hybrid___024root___stl_sequent__TOP__0(Vbf16_expe_h
     SData/*9:0*/ __Vtableidx1;
     __Vtableidx1 = 0;
     // Body
+    vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb 
+        = (((IData)(((0x7f80U == (0x7f80U & (IData)(vlSelf->s_axis_tdata))) 
+                     & (0U != (0x7fU & (IData)(vlSelf->s_axis_tdata))))) 
+            << 3U) | (((IData)((0x7f80U == (0x7fffU 
+                                            & (IData)(vlSelf->s_axis_tdata)))) 
+                       << 2U) | (((IData)(((0U == (0x7f80U 
+                                                   & (IData)(vlSelf->s_axis_tdata))) 
+                                           & (0U != 
+                                              (0x7fU 
+                                               & (IData)(vlSelf->s_axis_tdata))))) 
+                                  << 1U) | (IData)(
+                                                   (0U 
+                                                    == 
+                                                    (0x7fffU 
+                                                     & (IData)(vlSelf->s_axis_tdata)))))));
+    __Vtableidx1 = (((IData)(vlSelf->bf16_expe_hybrid__DOT__s2_mantissa) 
+                     << 3U) | (IData)(vlSelf->bf16_expe_hybrid__DOT__s2_sparse_exp_index));
+    vlSelf->bf16_expe_hybrid__DOT__u_sparse__DOT__data_comb 
+        = Vbf16_expe_hybrid__ConstPool__TABLE_hf7ff168e_0
+        [__Vtableidx1];
+    vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr) 
+                                   >> 0xfU));
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[0U] 
+        = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
+    vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__hidden_bit_comb 
+        = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb)))))) 
+           && (1U & (~ ((IData)(vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb) 
+                        >> 1U))));
+    vlSelf->s_axis_tready = (1U & ((~ (IData)(vlSelf->m_axis_tvalid)) 
+                                   | (IData)(vlSelf->m_axis_tready)));
     vlSelf->m_axis_tdata = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [0xbU];
-    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt 
-        = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
-        [0U];
     vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt 
         = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [1U];
@@ -1089,34 +1116,6 @@ VL_ATTR_COLD void Vbf16_expe_hybrid___024root___stl_sequent__TOP__0(Vbf16_expe_h
     vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__11__KET____DOT__nxt 
         = vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [0xaU];
-    vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb 
-        = (((IData)(((0x7f80U == (0x7f80U & (IData)(vlSelf->s_axis_tdata))) 
-                     & (0U != (0x7fU & (IData)(vlSelf->s_axis_tdata))))) 
-            << 3U) | (((IData)((0x7f80U == (0x7fffU 
-                                            & (IData)(vlSelf->s_axis_tdata)))) 
-                       << 2U) | (((IData)(((0U == (0x7f80U 
-                                                   & (IData)(vlSelf->s_axis_tdata))) 
-                                           & (0U != 
-                                              (0x7fU 
-                                               & (IData)(vlSelf->s_axis_tdata))))) 
-                                  << 1U) | (IData)(
-                                                   (0U 
-                                                    == 
-                                                    (0x7fffU 
-                                                     & (IData)(vlSelf->s_axis_tdata)))))));
-    __Vtableidx1 = (((IData)(vlSelf->bf16_expe_hybrid__DOT__s2_mantissa) 
-                     << 3U) | (IData)(vlSelf->bf16_expe_hybrid__DOT__s2_sparse_exp_index));
-    vlSelf->bf16_expe_hybrid__DOT__u_sparse__DOT__data_comb 
-        = Vbf16_expe_hybrid__ConstPool__TABLE_hf7ff168e_0
-        [__Vtableidx1];
-    vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_hybrid__DOT__gen_axi_pipelined__DOT__valid_sr) 
-                                   >> 0xfU));
-    vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__hidden_bit_comb 
-        = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb)))))) 
-           && (1U & (~ ((IData)(vlSelf->bf16_expe_hybrid__DOT__u_decompose__DOT__status_comb) 
-                        >> 1U))));
-    vlSelf->s_axis_tready = (1U & ((~ (IData)(vlSelf->m_axis_tvalid)) 
-                                   | (IData)(vlSelf->m_axis_tready)));
 }
 
 VL_ATTR_COLD void Vbf16_expe_hybrid___024root___eval_stl(Vbf16_expe_hybrid___024root* vlSelf) {
@@ -1231,7 +1230,7 @@ VL_ATTR_COLD void Vbf16_expe_hybrid___024root___ctor_var_reset(Vbf16_expe_hybrid
     for (int __Vi0 = 0; __Vi0 < 12; ++__Vi0) {
         vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[__Vi0] = VL_RAND_RESET_I(16);
     }
-    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_hybrid__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt = VL_RAND_RESET_I(16);

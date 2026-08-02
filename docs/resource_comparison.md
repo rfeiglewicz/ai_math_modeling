@@ -89,8 +89,16 @@ wspoldzielic i realna liczba bylaby wieksza.
 ## Koszt ujednolicenia latencji
 
 Najglebszy rdzen ma **16** stopni, wiec przy wspolnym zegarze kazdy
-inny musi zostac dopelniony do tej samej liczby. Dopelnienie idzie w
-SRL16E (16 bitow na jeden LUT), wiec jest tanie, ale nie darmowe:
+inny musi zostac dopelniony do tej samej liczby.
+
+Pierwszy stopien dopelnienia jest wymuszony jako przerzutnik
+(`bf16_pipe_pad`, `HEAD_FF`), reszta laduje w SRL16E. Bez tego Vivado
+wciaga rejestr wyjsciowy rdzenia do lancucha SRL i kombinacyjne wyjscie
+rdzenia trafia wprost na wejscie D bloku SRL, ktory ma gorszy czas
+ustalania. Zmierzone na `expe full-lut`: dopelnienie z 4 na 8 stopni
+zbijalo Fmax z 283.4 na 254.1 MHz przy niezmienionym opoznieniu logiki.
+
+Pomiary kosztu dopelniania: `docs/pipe_target_comparison.md`.
 
 | rdzen | stopnie wlasne | do dopelnienia |
 |---|---:|---:|

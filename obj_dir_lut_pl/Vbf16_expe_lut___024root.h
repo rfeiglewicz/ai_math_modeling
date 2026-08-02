@@ -34,7 +34,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vbf16_expe_lut___024root final : public Veril
     SData/*15:0*/ bf16_expe_lut__DOT__s3_rom_data;
     SData/*15:0*/ bf16_expe_lut__DOT__core_data;
     SData/*15:0*/ bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr;
-    SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt;
+    SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt;
     SData/*15:0*/ bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt;

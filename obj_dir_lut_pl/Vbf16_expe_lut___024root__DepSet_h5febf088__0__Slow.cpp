@@ -1692,11 +1692,34 @@ VL_ATTR_COLD void Vbf16_expe_lut___024root___stl_sequent__TOP__0(Vbf16_expe_lut_
     Vbf16_expe_lut__Syms* const __restrict vlSymsp VL_ATTR_UNUSED = vlSelf->vlSymsp;
     VL_DEBUG_IF(VL_DBG_MSGF("+    Vbf16_expe_lut___024root___stl_sequent__TOP__0\n"); );
     // Body
+    vlSelf->bf16_expe_lut__DOT__eo_delay[0U] = vlSelf->bf16_expe_lut__DOT__s2_eo_code;
+    vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__status_comb 
+        = (((IData)(((0x7f80U == (0x7f80U & (IData)(vlSelf->s_axis_tdata))) 
+                     & (0U != (0x7fU & (IData)(vlSelf->s_axis_tdata))))) 
+            << 3U) | (((IData)((0x7f80U == (0x7fffU 
+                                            & (IData)(vlSelf->s_axis_tdata)))) 
+                       << 2U) | (((IData)(((0U == (0x7f80U 
+                                                   & (IData)(vlSelf->s_axis_tdata))) 
+                                           & (0U != 
+                                              (0x7fU 
+                                               & (IData)(vlSelf->s_axis_tdata))))) 
+                                  << 1U) | (IData)(
+                                                   (0U 
+                                                    == 
+                                                    (0x7fffU 
+                                                     & (IData)(vlSelf->s_axis_tdata)))))));
+    vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr) 
+                                   >> 0xfU));
+    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[0U] 
+        = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head;
+    vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__hidden_bit_comb 
+        = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__status_comb)))))) 
+           && (1U & (~ ((IData)(vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__status_comb) 
+                        >> 1U))));
+    vlSelf->s_axis_tready = (1U & ((~ (IData)(vlSelf->m_axis_tvalid)) 
+                                   | (IData)(vlSelf->m_axis_tready)));
     vlSelf->m_axis_tdata = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [0xbU];
-    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt 
-        = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
-        [0U];
     vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt 
         = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [1U];
@@ -1727,30 +1750,6 @@ VL_ATTR_COLD void Vbf16_expe_lut___024root___stl_sequent__TOP__0(Vbf16_expe_lut_
     vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__11__KET____DOT__nxt 
         = vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain
         [0xaU];
-    vlSelf->bf16_expe_lut__DOT__eo_delay[0U] = vlSelf->bf16_expe_lut__DOT__s2_eo_code;
-    vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__status_comb 
-        = (((IData)(((0x7f80U == (0x7f80U & (IData)(vlSelf->s_axis_tdata))) 
-                     & (0U != (0x7fU & (IData)(vlSelf->s_axis_tdata))))) 
-            << 3U) | (((IData)((0x7f80U == (0x7fffU 
-                                            & (IData)(vlSelf->s_axis_tdata)))) 
-                       << 2U) | (((IData)(((0U == (0x7f80U 
-                                                   & (IData)(vlSelf->s_axis_tdata))) 
-                                           & (0U != 
-                                              (0x7fU 
-                                               & (IData)(vlSelf->s_axis_tdata))))) 
-                                  << 1U) | (IData)(
-                                                   (0U 
-                                                    == 
-                                                    (0x7fffU 
-                                                     & (IData)(vlSelf->s_axis_tdata)))))));
-    vlSelf->m_axis_tvalid = (1U & ((IData)(vlSelf->bf16_expe_lut__DOT__gen_axi_pipelined__DOT__vld_sr) 
-                                   >> 0xfU));
-    vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__hidden_bit_comb 
-        = ((1U & (~ (IData)((0U != (0xdU & (IData)(vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__status_comb)))))) 
-           && (1U & (~ ((IData)(vlSelf->bf16_expe_lut__DOT__u_decompose__DOT__status_comb) 
-                        >> 1U))));
-    vlSelf->s_axis_tready = (1U & ((~ (IData)(vlSelf->m_axis_tvalid)) 
-                                   | (IData)(vlSelf->m_axis_tready)));
 }
 
 VL_ATTR_COLD void Vbf16_expe_lut___024root___eval_stl(Vbf16_expe_lut___024root* vlSelf) {
@@ -1861,7 +1860,7 @@ VL_ATTR_COLD void Vbf16_expe_lut___024root___ctor_var_reset(Vbf16_expe_lut___024
     for (int __Vi0 = 0; __Vi0 < 12; ++__Vi0) {
         vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__chain[__Vi0] = VL_RAND_RESET_I(16);
     }
-    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__1__KET____DOT__nxt = VL_RAND_RESET_I(16);
+    vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__0__KET____DOT__gen_head__DOT__head = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__2__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__3__KET____DOT__nxt = VL_RAND_RESET_I(16);
     vlSelf->bf16_expe_lut__DOT__u_pipe_pad__DOT__gen_delay__DOT__gen_stage__BRA__4__KET____DOT__nxt = VL_RAND_RESET_I(16);
