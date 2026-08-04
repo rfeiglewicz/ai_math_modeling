@@ -16,7 +16,9 @@ sie na BRAM, `cut` na LUT, `poly4 dsp` na DSP.  Sam `expe hybrid` wysyca
 BRAM36 w 100%, ale zostawia wolne 42% LUT, 83% FF, 100% DSP48E1.
 
 Te liczby zakladaja 100% wysycenia ukladu.  Realistyczny wariant (80%)
-jest w rozdziale 4.
+jest w rozdziale 4.  Powyzsze rdzenie maja **rozna latencje**; wersje
+wyrownane do wspolnej latencji (PIPE_TARGET 4 / 8 / 13), czyli takie,
+ktore da sie wstawiac zamiennie, sa przeanalizowane osobno w rozdziale 5.
 
 ## Model
 
@@ -140,37 +142,227 @@ sie zrutowac.  Ponizej to samo przy budzecie zasobow ograniczonym do
 | jeden zegar 193.2 MHz | 584 x expe hybrid + 157 x expe cut+retime + 72 x poly4 dsp+retime | 813 | 157.1 |
 | osobne zegary | 584 x expe hybrid + 157 x expe cut+retime + 72 x poly4 dsp+retime | 813 | 190.5 |
 
-## 5. Wplyw wyrownania potoku (PIPE_TARGET)
+## 5. Analizy per PIPE_TARGET
 
-Wyrownanie latencji przez `bf16_pipe_pad` nie zmienia Fmax (dFmax = 0
-dla kazdego rdzenia i kazdego targetu, patrz `docs/pipe_target_comparison.md`),
-ale zjada LUT i FF, wiec zmniejsza liczbe kopii, ktore sie mieszcza.
+Do tej pory kazdy rdzen mial swoja naturalna glebokosc.  W projekcie
+docelowym wszystkie sa dopelniane przez `bf16_pipe_pad` do wspolnej
+latencji, dzieki czemu staja sie **wymienne 1:1** - to jest dokladnie
+teza, ktora sprawdza `make rtl_equivalence_test`.  Ponizej kazdy
+PIPE_TARGET jest analizowany jako osobny projekt.
 
-| PIPE_TARGET | rdzen | LUT | FF | Fmax [MHz] | zasob wiazacy | N | T [Gop/s] |
-|---:|---|---:|---:|---:|---|---:|---:|
-| 4 | expe full-lut | 40 | 54 | 283.4 | BRAM36 | 182 | 51.6 |
-| 4 | expe hybrid | 107 | 64 | 250.3 | BRAM36 | 730 | 182.7 |
-| 4 | expe cut+retime | 241 | 190 | 193.2 | LUT | 558 | 107.8 |
-| 4 | poly4+retime | 163 | 134 | 183.8 | DSP48E1 | 148 | 27.2 |
-| 4 | poly4 dsp+retime | 99 | 160 | 194.3 | DSP48E1 | 123 | 23.9 |
-| 8 | expe full-lut | 40 | 122 | 283.4 | BRAM36 | 182 | 51.6 |
-| 8 | expe hybrid | 107 | 132 | 250.3 | BRAM36 | 730 | 182.7 |
-| 8 | expe cut+retime | 241 | 207 | 193.2 | LUT | 558 | 107.8 |
-| 8 | poly4+retime | 163 | 134 | 183.8 | DSP48E1 | 148 | 27.2 |
-| 8 | poly4 dsp+retime | 99 | 160 | 194.3 | DSP48E1 | 123 | 23.9 |
-| 13 | expe full-lut | 74 | 112 | 283.4 | BRAM36 | 182 | 51.6 |
-| 13 | expe hybrid | 141 | 122 | 250.3 | BRAM36 | 730 | 182.7 |
-| 13 | expe cut+retime | 273 | 244 | 193.2 | LUT | 493 | 95.2 |
-| 13 | poly4+retime | 179 | 170 | 183.8 | DSP48E1 | 148 | 27.2 |
-| 13 | poly4 dsp+retime | 99 | 177 | 194.3 | DSP48E1 | 123 | 23.9 |
+Dwie konsekwencje wyboru targetu:
+
+1. **Ktore rdzenie w ogole wchodza w gre.**  Rdzen o naturalnej glebokosci
+   wiekszej niz target nie da sie skrocic, wiec odpada.  Wiersze oznaczone
+   w `pipe_target_sweep.csv` jako `za plytki target` sa tu pominiete.
+2. **Ile kosztuje dopelnienie.**  Stopnie dopelniajace nie zmieniaja Fmax
+   (dFmax = 0 na calym sweepie), ale zjadaja LUT i FF, wiec zmniejszaja
+   liczbe kopii, ktore sie mieszcza.
+
+### 5.1. PIPE_TARGET = 4
+
+Rdzenie dostepne przy tej latencji:
+
+| rdzen | stopnie | z tego pad | LUT | FF | DSP | BRAM36 | Fmax [MHz] |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| expe full-lut | 4 | 0 | 40 | 54 | 0 | 2 | 283.4 |
+| expe hybrid | 4 | 0 | 107 | 64 | 0 | 0.5 | 250.3 |
+
+Odpadaja, bo ich naturalna glebokosc przekracza target: `expe cut+retime` (potrzebuje 7 stopni), `poly4+retime` (potrzebuje 9 stopni), `poly4 dsp+retime` (potrzebuje 12 stopni).
+
+**Jeden typ rdzenia:**
+
+| rdzen | zasob wiazacy | N | T [Gop/s] |
+|---|---|---:|---:|
+| expe full-lut | BRAM36 | 182 | 51.6 |
+| expe hybrid | BRAM36 | 730 | 182.7 |
+
+**Mieszanka, wspolny zegar** (rdzenie maja te sama latencje, wiec
+mozna je wstawiac zamiennie w jednej domenie zegarowej):
+
+| f [MHz] | sklad | N razem | T [Gop/s] |
+|---:|---|---:|---:|
+| 283.4 | 182 x expe full-lut | 182 | 51.6 |
+| 250.3 | 730 x expe hybrid | 730 | 182.7 |
+
+Optimum: **730 x expe hybrid** przy 250.3 MHz = **182.7 Gop/s** (730 rdzeni).
+Optimum jest **dowiedzione**: relaksacja ciagla tego samego zadania
+daje to samo ograniczenie, wiec zadna inna kombinacja nie da wiecej.
+
+| zasob | uzyte | dostepne | % |
+|---|---:|---:|---:|
+| LUT | 78110 | 134600 | 58.0% |
+| LUT-as-mem | 0 | 46200 | 0.0% |
+| FF | 46720 | 269200 | 17.4% |
+| CARRY4 | 0 | 33650 | 0.0% |
+| DSP48E1 | 0 | 740 | 0.0% |
+| BRAM36 | 365 | 365 | 100.0% |
+
+Wysycone: BRAM36.  Zupelnie nieuzyte: LUT-as-mem, CARRY4, DSP48E1.
+Mieszanie **nie oplaca sie** przy tym targecie - najlepszy jest
+czysty `expe hybrid`.  Dolozenie wolniejszego typu sciaga wspolny
+zegar bardziej, niz zyskuje na liczbie rdzeni.
+
+**Mieszanka, osobne zegary** - gorne ograniczenie.  Uwaga: przy
+osobnych zegarach wspolna latencja przestaje cokolwiek znaczyc, wiec
+ten wariant przeczy sensowi ustawiania PIPE_TARGET.  Podany dla skali:
+
+730 x expe hybrid @ 250.3 MHz = 730 rdzeni, **182.7 Gop/s**.
+
+### 5.2. PIPE_TARGET = 8
+
+Rdzenie dostepne przy tej latencji:
+
+| rdzen | stopnie | z tego pad | LUT | FF | DSP | BRAM36 | Fmax [MHz] |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| expe full-lut | 8 | 4 | 40 | 122 | 0 | 2 | 283.4 |
+| expe hybrid | 8 | 4 | 107 | 132 | 0 | 0.5 | 250.3 |
+| expe cut+retime | 8 | 1 | 241 | 207 | 1 | 0 | 193.2 |
+
+Odpadaja, bo ich naturalna glebokosc przekracza target: `poly4+retime` (potrzebuje 9 stopni), `poly4 dsp+retime` (potrzebuje 12 stopni).
+
+**Jeden typ rdzenia:**
+
+| rdzen | zasob wiazacy | N | T [Gop/s] |
+|---|---|---:|---:|
+| expe full-lut | BRAM36 | 182 | 51.6 |
+| expe hybrid | BRAM36 | 730 | 182.7 |
+| expe cut+retime | LUT | 558 | 107.8 |
+
+**Mieszanka, wspolny zegar** (rdzenie maja te sama latencje, wiec
+mozna je wstawiac zamiennie w jednej domenie zegarowej):
+
+| f [MHz] | sklad | N razem | T [Gop/s] |
+|---:|---|---:|---:|
+| 283.4 | 182 x expe full-lut | 182 | 51.6 |
+| 250.3 | 730 x expe hybrid | 730 | 182.7 |
+| 193.2 | 730 x expe hybrid + 234 x expe cut+retime | 964 | 186.2 |
+
+Optimum: **730 x expe hybrid + 234 x expe cut+retime** przy 193.2 MHz = **186.2 Gop/s** (964 rdzeni).
+Optimum jest **dowiedzione**: relaksacja ciagla tego samego zadania
+daje to samo ograniczenie, wiec zadna inna kombinacja nie da wiecej.
+
+| zasob | uzyte | dostepne | % |
+|---|---:|---:|---:|
+| LUT | 134504 | 134600 | 99.9% |
+| LUT-as-mem | 3042 | 46200 | 6.6% |
+| FF | 144798 | 269200 | 53.8% |
+| CARRY4 | 2574 | 33650 | 7.6% |
+| DSP48E1 | 234 | 740 | 31.6% |
+| BRAM36 | 365 | 365 | 100.0% |
+
+Wysycone: LUT, BRAM36.
+Mieszanie oplaca sie: 186.2 Gop/s wobec 182.7 Gop/s dla
+samego `expe hybrid`.
+
+**Mieszanka, osobne zegary** - gorne ograniczenie.  Uwaga: przy
+osobnych zegarach wspolna latencja przestaje cokolwiek znaczyc, wiec
+ten wariant przeczy sensowi ustawiania PIPE_TARGET.  Podany dla skali:
+
+730 x expe hybrid @ 250.3 MHz + 234 x expe cut+retime @ 193.2 MHz = 964 rdzeni, **227.9 Gop/s**.
+
+### 5.3. PIPE_TARGET = 13
+
+Rdzenie dostepne przy tej latencji:
+
+| rdzen | stopnie | z tego pad | LUT | FF | DSP | BRAM36 | Fmax [MHz] |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| expe full-lut | 13 | 9 | 74 | 112 | 0 | 2 | 283.4 |
+| expe hybrid | 13 | 9 | 141 | 122 | 0 | 0.5 | 250.3 |
+| poly4 dsp+retime | 13 | 1 | 99 | 177 | 6 | 0 | 194.3 |
+| expe cut+retime | 13 | 6 | 273 | 244 | 1 | 0 | 193.2 |
+| poly4+retime | 13 | 4 | 179 | 170 | 5 | 0 | 183.8 |
+
+Nic nie odpada - target miesci naturalna glebokosc wszystkich rdzeni.
+
+**Jeden typ rdzenia:**
+
+| rdzen | zasob wiazacy | N | T [Gop/s] |
+|---|---|---:|---:|
+| expe full-lut | BRAM36 | 182 | 51.6 |
+| expe hybrid | BRAM36 | 730 | 182.7 |
+| poly4 dsp+retime | DSP48E1 | 123 | 23.9 |
+| expe cut+retime | LUT | 493 | 95.2 |
+| poly4+retime | DSP48E1 | 148 | 27.2 |
+
+**Mieszanka, wspolny zegar** (rdzenie maja te sama latencje, wiec
+mozna je wstawiac zamiennie w jednej domenie zegarowej):
+
+| f [MHz] | sklad | N razem | T [Gop/s] |
+|---:|---|---:|---:|
+| 283.4 | 182 x expe full-lut | 182 | 51.6 |
+| 250.3 | 730 x expe hybrid | 730 | 182.7 |
+| 194.3 | 730 x expe hybrid + 123 x poly4 dsp+retime | 853 | 165.7 |
+| 193.2 | 730 x expe hybrid + 110 x poly4 dsp+retime + 76 x expe cut+retime | 916 | 177.0 |
+| 183.8 | 730 x expe hybrid + 110 x poly4 dsp+retime + 76 x expe cut+retime | 916 | 168.4 |
+
+Optimum: **730 x expe hybrid** przy 250.3 MHz = **182.7 Gop/s** (730 rdzeni).
+Optimum jest **dowiedzione**: relaksacja ciagla tego samego zadania
+daje to samo ograniczenie, wiec zadna inna kombinacja nie da wiecej.
+
+| zasob | uzyte | dostepne | % |
+|---|---:|---:|---:|
+| LUT | 102930 | 134600 | 76.5% |
+| LUT-as-mem | 12410 | 46200 | 26.9% |
+| FF | 89060 | 269200 | 33.1% |
+| CARRY4 | 0 | 33650 | 0.0% |
+| DSP48E1 | 0 | 740 | 0.0% |
+| BRAM36 | 365 | 365 | 100.0% |
+
+Wysycone: BRAM36.  Zupelnie nieuzyte: CARRY4, DSP48E1.
+Mieszanie **nie oplaca sie** przy tym targecie - najlepszy jest
+czysty `expe hybrid`.  Dolozenie wolniejszego typu sciaga wspolny
+zegar bardziej, niz zyskuje na liczbie rdzeni.
+
+**Mieszanka, osobne zegary** - gorne ograniczenie.  Uwaga: przy
+osobnych zegarach wspolna latencja przestaje cokolwiek znaczyc, wiec
+ten wariant przeczy sensowi ustawiania PIPE_TARGET.  Podany dla skali:
+
+730 x expe hybrid @ 250.3 MHz + 110 x poly4 dsp+retime @ 194.3 MHz + 76 x expe cut+retime @ 193.2 MHz = 916 rdzeni, **218.8 Gop/s**.
+
+### 5.4. Porownanie trzech targetow
+
+| PIPE_TARGET | rdzeni w grze | najlepszy 1 typ [Gop/s] | najlepsza mieszanka [Gop/s] | f [MHz] | N | osobne zegary [Gop/s] |
+|---:|---:|---:|---:|---:|---:|---:|
+| 4 | 2 | 182.7 (`expe hybrid`) | **182.7** | 250.3 | 730 | 182.7 |
+| 8 | 3 | 182.7 (`expe hybrid`) | **186.2** | 193.2 | 964 | 227.9 |
+| 13 | 5 | 182.7 (`expe hybrid`) | **182.7** | 250.3 | 730 | 218.8 |
+
+Sklady optymalnych mieszanek:
+
+* **target 4:** 730 x expe hybrid @ 250.3 MHz -> 182.7 Gop/s
+* **target 8:** 730 x expe hybrid + 234 x expe cut+retime @ 193.2 MHz -> 186.2 Gop/s
+* **target 13:** 730 x expe hybrid @ 250.3 MHz -> 182.7 Gop/s
+
+**Najlepszy target: 8** - 186.2 Gop/s.
+
+* target 4: 182.7 Gop/s (-1.9% wobec targetu 8)
+* target 13: 182.7 Gop/s (-1.9% wobec targetu 8)
+
+Zaleznosc nie jest monotoniczna i warto zrozumiec dlaczego:
+
+* **Za plytki target odcina rdzenie.**  Przy targecie 4 zostaja tylko dwa
+  rdzenie i oba sa oparte o BRAM, wiec caly LUT i caly DSP leza odlogiem.
+  Przepustowosc jest z gory ograniczona przez 365 blokow BRAM.
+* **Za gleboki target tez szkodzi**, ale z innego powodu: dopelnianie
+  kosztuje LUT i FF.  Miedzy targetem 8 a 13 `expe hybrid` rosnie ze 107
+  do 141 LUT, a `expe cut+retime` z 241 do 273 LUT.  Przy niezmienionym
+  Fmax to czysta strata: w tym samym ukladzie miesci sie mniej kopii.
+* Optimum lezy tam, gdzie target jest **dokladnie tak gleboki, jak trzeba**,
+  zeby wpuscic kolejny rdzen o komplementarnym profilu zasobow.  Tu jest to
+  target 8, ktory dopuszcza `expe cut+retime` (7 stopni wlasnych, LUT+DSP)
+  obok `expe hybrid` (4 stopnie, BRAM) prawie bez kosztu dopelnienia:
+  `cut` potrzebuje tylko 1 stopnia pad, `hybrid` 4.
 
 ## Zastrzezenia
 
 * Fmax jest **po syntezie, bez place & route**.  Na ostatnich sciezkach
   krytycznych 56-77% opoznienia to *szacowane* trasowanie.  Przy wysyceniu
   ukladu bliskim 100% realne Fmax bedzie wyraznie nizsze - stad rozdzial 4.
-* Liczby kopii z rozdzialow 2 i 3 to **gorne ograniczenie**, a nie projekt,
-  ktory da sie zbudowac.
+* Liczby kopii z rozdzialow 2, 3 i 5 to **gorne ograniczenie**, a nie
+  projekt, ktory da sie zbudowac.  "Optimum dowiedzione" w rozdziale 5
+  znaczy tylko, ze przy tych zmierzonych kosztach zasobow nie ma lepszego
+  skladu - nie, ze taki uklad sie zrutuje.
 * Zawartosc ROM jest identyczna we wszystkich kopiach.  BRAM w Artix-7 jest
   prawdziwie dwuportowy, wiec jeden blok moze obsluzyc 2 rdzenie na takt;
   to podnioslo by limit dla `hybrid` i `full-lut` o czynnik 2, kosztem

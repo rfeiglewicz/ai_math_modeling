@@ -270,9 +270,26 @@ pipe_target_table:
 # docs/throughput_analysis.md: ile rdzeni zmiesci sie w ukladzie i jaka daja
 # laczna przepustowosc. Czyta resources.csv + pipe_target_sweep.csv, wiec
 # wymaga wczesniejszego `make compare_cores` i `make sweep_pipe_targets`.
-# Solwer calkowitoliczbowy potrzebuje scipy (HiGHS).
+#
+# Solwer calkowitoliczbowy potrzebuje scipy (HiGHS), a systemowy python3 zwykle
+# go nie ma. Szukamy wiec interpretera, ktory scipy widzi: najpierw $(PYTHON),
+# potem aktywne srodowisko conda, na koncu python3/python z PATH. Mozna
+# wymusic recznie: make throughput_table PYTHON=/sciezka/do/python
+PYTHON ?= python3
+
 throughput_table:
-	@python3 scripts/make_throughput_table.py
+	@py=""; \
+	for p in "$(PYTHON)" "$(CONDA_PREFIX)/bin/python" python3 python; do \
+	    [ -n "$$p" ] || continue; \
+	    if "$$p" -c 'import scipy.optimize' >/dev/null 2>&1; then py="$$p"; break; fi; \
+	done; \
+	if [ -z "$$py" ]; then \
+	    echo "make throughput_table: nie znalazlem interpretera ze scipy." >&2; \
+	    echo "  aktywuj srodowisko (np. conda activate py312) albo podaj:" >&2; \
+	    echo "  make throughput_table PYTHON=/sciezka/do/python" >&2; \
+	    exit 1; \
+	fi; \
+	"$$py" scripts/make_throughput_table.py
 
 # Weryfikacja funkcjonalna wszystkich rdzeni (Verilator, wyczerpujaca).
 # Rdzenie maja rozne testbenche, wiec podsumowanie filtrujemy po obu formatach:
