@@ -291,6 +291,39 @@ throughput_table:
 	fi; \
 	"$$py" scripts/make_throughput_table.py
 
+# ---------------------------------------------------------------------------
+# Punkt odniesienia na GPU: zmierzona przepustowosc exp() w BF16 na krzemie.
+# Sluzy jako kontrapunkt do liczb FPGA, ktore pochodza tylko z syntezy.
+#
+# nvcc czesto nie jest w PATH, wiec sprawdzamy tez domyslna sciezke instalacji.
+# -arch=native kompiluje pod faktycznie zainstalowane GPU; hexp/h2exp w BF16
+# wymagaja sm_80 lub nowszego.
+NVCC ?= nvcc
+
+.PHONY: cuda_throughput cuda_throughput_run
+
+cuda_throughput: build/bf16_exp_throughput
+
+build/bf16_exp_throughput: cuda/bf16_exp_throughput.cu
+	@nv=""; \
+	for c in "$(NVCC)" /usr/local/cuda/bin/nvcc; do \
+	    [ -n "$$c" ] || continue; \
+	    if command -v "$$c" >/dev/null 2>&1; then nv="$$c"; break; fi; \
+	done; \
+	if [ -z "$$nv" ]; then \
+	    echo "make cuda_throughput: nie znalazlem nvcc." >&2; \
+	    echo "  podaj recznie: make cuda_throughput NVCC=/sciezka/do/nvcc" >&2; \
+	    exit 1; \
+	fi; \
+	mkdir -p build; \
+	echo "$$nv -O3 -std=c++17 -arch=native -o $@ $<"; \
+	"$$nv" -O3 -std=c++17 -arch=native -o $@ $<
+
+# Pelny przebieg: pomiar + przemiatanie N + wyczerpujace sprawdzenie ULP.
+# CUDA_ARGS pozwala dolozyc opcje, np. make cuda_throughput_run CUDA_ARGS=--samples=256M
+cuda_throughput_run: build/bf16_exp_throughput
+	./build/bf16_exp_throughput --sweep $(CUDA_ARGS)
+
 # Weryfikacja funkcjonalna wszystkich rdzeni (Verilator, wyczerpujaca).
 # Rdzenie maja rozne testbenche, wiec podsumowanie filtrujemy po obu formatach:
 # "checked=/OVERALL" (exp2, lut) oraz "Checked:/Mismatches:" (hybrid, cut, poly4).
