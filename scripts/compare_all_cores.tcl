@@ -46,6 +46,14 @@ set src_exp2  [concat $common {bf16_recompose.sv bf16_log2e_mult.sv \
                                bf16_unified_shift.sv bf16_coeff_rom.sv \
                                bf16_linear_approx.sv bf16_normalize.sv \
                                bf16_round.sv bf16_exp2.sv}]
+# Width-optimised exp2. Reuzywa czterech modulow produkcyjnych (decompose,
+# early_out, recompose, pipe_pad) i pakietu bf16_exp2_pkg, bo to hydraulika
+# formatu BF16 bez arytmetyki. Cala sciezka danych jest wlasna.
+set src_optim [concat $common {bf16_exp2_optim_pkg.sv bf16_recompose.sv \
+                               bf16_exp2_optim_rom.sv bf16_exp2_optim_log2e_mult.sv \
+                               bf16_exp2_optim_shift.sv bf16_exp2_optim_approx.sv \
+                               bf16_exp2_optim_normalize.sv bf16_exp2_optim_round.sv \
+                               bf16_exp2_optim.sv}]
 set src_lut    [concat $common {bf16_expe_lut_rom.sv bf16_expe_lut.sv}]
 set src_hybrid [concat $common {bf16_expe_sparse_decode.sv bf16_expe_hybrid_rom.sv \
                                 bf16_expe_hybrid.sv}]
@@ -63,10 +71,26 @@ set RT_OFF_EXP2 "RETIME_LOG2E=0 RETIME_SHIFT=0 RETIME_APPROX=0 RETIME_NORM=0 RET
 set RT_ON_EXP2  "RETIME_LOG2E=2 RETIME_SHIFT=1 RETIME_APPROX=3 RETIME_NORM=1 RETIME_ROUND=2 SPLIT_MULT=1"
 set EXP2_OPT    "DSP_SHIFT=1 MANT_MULT_ROUND_FRAC=21 RESET_DATAPATH=0"
 
+# Retiming rdzenia waskiego. Domyslne wartosci sa mniejsze niz w produkcji,
+# bo nie ma czego dzielic: 17x17 mnozarka miesci sie w jednym DSP, a sumator
+# ma 18 bitow zamiast 62.
+set RT_OFF_OPTIM "RETIME_LOG2E=0 RETIME_SHIFT=0 RETIME_APPROX=0 RETIME_NORM=0 RETIME_ROUND=0"
+set RT_ON_OPTIM  "RETIME_LOG2E=1 RETIME_SHIFT=0 RETIME_APPROX=1 RETIME_NORM=0 RETIME_ROUND=1"
+# Retiming do oporu, zeby oddzielic "waski rdzen jest wolniejszy" od "waski
+# rdzen dostal mniej stopni". Przy RT_ON sciezka krytyczna siedzi w rounderze
+# (blok shift+increment+carry+assembly dzieli jeden stopien), a nie w
+# arytmetyce -- ten wariant ja rozcina.
+set RT_MAX_OPTIM "RETIME_LOG2E=2 RETIME_SHIFT=1 RETIME_APPROX=2 RETIME_NORM=1 RETIME_ROUND=2"
+set OPTIM_BASE   "RESET_DATAPATH=0"
+
 set variants [list \
   [list "exp2 baseline"    bf16_exp2        $src_exp2   "REGISTER_STAGES=1 PIPE_TARGET=0 $RT_OFF_EXP2"] \
   [list "exp2 opt"         bf16_exp2        $src_exp2   "REGISTER_STAGES=1 PIPE_TARGET=0 $EXP2_OPT $RT_OFF_EXP2"] \
   [list "exp2 opt+retime"  bf16_exp2        $src_exp2   "REGISTER_STAGES=1 PIPE_TARGET=0 $EXP2_OPT $RT_ON_EXP2"] \
+  [list "exp2 optim"       bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE $RT_OFF_OPTIM"] \
+  [list "optim+retime"     bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE $RT_ON_OPTIM"] \
+  [list "optim max-retime" bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE $RT_MAX_OPTIM"] \
+  [list "optim half-up"   bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE ROUND_MODE=1 $RT_MAX_OPTIM"] \
   [list "expe full-lut"    bf16_expe_lut    $src_lut    "REGISTER_STAGES=1 PIPE_TARGET=0"] \
   [list "expe hybrid"      bf16_expe_hybrid $src_hybrid "REGISTER_STAGES=1 PIPE_TARGET=0"] \
   [list "expe cut"         bf16_expe_cut    $src_cut    "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_CUT=0 RETIME_FE=0"] \

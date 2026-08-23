@@ -31,6 +31,10 @@ trasowanie, wiec po implementacji te liczby spadna.
 | exp2 baseline | 7 | 901 | 25 | 248 | 2 | 4 | 1 | 2 | 48.9 | 17 |
 | exp2 opt | 7 | 584 | 23 | 153 | 11 | 5 | 1 | 2 | 50.6 | 15 |
 | exp2 opt+retime | 16 | 654 | 33 | 506 | 16 | 5 | 1 | 2 | 161.7 | 6 |
+| exp2 optim | 7 | 480 | 14 | 138 | 11 | 2 | 0.5 | 1 | 80.4 | 9 |
+| optim+retime | 10 | 391 | 14 | 200 | 11 | 2 | 0.5 | 1 | 115.5 | 7 |
+| optim max-retime | 15 | 369 | 14 | 272 | 37 | 2 | 0.5 | 1 | 164.8 | 8 |
+| optim half-up | 15 | 368 | 14 | 272 | 37 | 2 | 0.5 | 1 | 177.5 | 5 |
 | expe full-lut | 4 | 40 | 0 | 54 | 0 | 0 | 2 | 0 | 283.4 | 1 |
 | expe hybrid | 4 | 107 | 0 | 64 | 0 | 0 | 0.5 | 1 | 250.3 | 3 |
 | expe cut | 4 | 254 | 11 | 110 | 0 | 1 | 0 | 0 | 117.0 | 12 |
@@ -53,6 +57,10 @@ pojedynczy RAMB18 to pol kafelka.
 | exp2 baseline | 0.669 | 0.092 | 0.541 | 0.274 |
 | exp2 opt | 0.434 | 0.057 | 0.676 | 0.274 |
 | exp2 opt+retime | 0.486 | 0.188 | 0.676 | 0.274 |
+| exp2 optim | 0.357 | 0.051 | 0.27 | 0.137 |
+| optim+retime | 0.29 | 0.074 | 0.27 | 0.137 |
+| optim max-retime | 0.274 | 0.101 | 0.27 | 0.137 |
+| optim half-up | 0.273 | 0.101 | 0.27 | 0.137 |
 | expe full-lut | 0.03 | 0.02 | 0 | 0.548 |
 | expe hybrid | 0.079 | 0.024 | 0 | 0.137 |
 | expe cut | 0.189 | 0.041 | 0.135 | 0 |
@@ -77,6 +85,10 @@ wspoldzielic i realna liczba bylaby wieksza.
 | exp2 baseline | 149 | 1085 | 185 | 365 | **149** |
 | exp2 opt | 230 | 1759 | 148 | 365 | **148** |
 | exp2 opt+retime | 205 | 532 | 148 | 365 | **148** |
+| exp2 optim | 280 | 1950 | 370 | 730 | **280** |
+| optim+retime | 344 | 1346 | 370 | 730 | **344** |
+| optim max-retime | 364 | 989 | 370 | 730 | **364** |
+| optim half-up | 365 | 989 | 370 | 730 | **365** |
 | expe full-lut | 3365 | 4985 | - | 182 | **182** |
 | expe hybrid | 1257 | 4206 | - | 730 | **730** |
 | expe cut | 529 | 2447 | 740 | - | **529** |
@@ -108,6 +120,10 @@ Ile rdzeni zmiesci sie w ukladzie i jaka daja laczna przepustowosc:
 | exp2 baseline | 7 | 9 |
 | exp2 opt | 7 | 9 |
 | exp2 opt+retime | 16 | 0 |
+| exp2 optim | 7 | 9 |
+| optim+retime | 10 | 6 |
+| optim max-retime | 15 | 1 |
+| optim half-up | 15 | 1 |
 | expe full-lut | 4 | 12 |
 | expe hybrid | 4 | 12 |
 | expe cut | 4 | 12 |

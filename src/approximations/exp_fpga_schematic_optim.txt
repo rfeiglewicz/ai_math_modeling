@@ -1,0 +1,195 @@
+                          BF16 EXP2 / EXPE HARDWARE ARCHITECTURE
+                              WIDTH-OPTIMISED CORE (optim)
+                          ====================================
+
+Companion to exp_fpga_schematic.txt, which documents the production core. This
+one documents bf16_exp2_optim / bf16_exp2_optim_approx(), the minimum-width
+datapath that stays BIT-IDENTICAL to bf16_exp2_approx<29> over all 65536 BF16
+patterns in both modes.
+
+Widths come from bf16_exp2_optim_pkg.sv, which mirrors namespace bf16_optim_cfg
+in bf16_exp2_optim.hpp one-for-one. Production width in [brackets] where it
+differs.
+
+Measured on xc7a200tfbg484-1, 15 pipeline stages, ROUND_MODE=1 (half-up):
+368 LUT, 14 CARRY4, 272 FF, 2 DSP, 0.5 BRAM36, 177.5 MHz.
+Same depth production core: 654 LUT, 33 CARRY4, 506 FF, 5 DSP, 161.7 MHz.
+
+
+      [ BF16 Input (16) ]
+              |
+              v
+    +-------------------+
+    |   Decomposition   |          bf16_decompose, reused UNCHANGED
+    +-------------------+
+      |        |      |
+      v        v      v
+    [S] (1)  [E] (9) [M] (7)       E is unbiased, signed
+              |       |            bf16_early_out handles NaN/Inf/positive and
+              |       |            EXP < -9 -> +1.0, EXP > 7 -> +0.0
+              |       v
+              |     [Clone MSB=1]
+              |       |
+              |       v
+              |     [1.M] (8)         [Log2E] (23)  Q1.22, 0x5c551d
+              |       |                  |
+              |       v                  v
+              |     +----------------------+
+              |     |   Multiplier 8 x 23  |  ONE DSP48E1
+              |     +----------------------+
+              |       |        | (31) Q2.29 raw
+              |       |        v
+              |       |  +--------------------------+
+              |       |  |  Round Q2.29 -> Q2.21    |  <-- NEW STAGE
+              |       |  |  RNE (default)           |      vs production
+              |       |  |  or half-up (ROUND_MODE=1)|
+              |       |  +--------------------------+
+              |       |        | (23)
+              |       v        v
+              |     +-----------+
+              |     |    MUX    |  base2 bypass is pure wiring:
+              |     +-----------+  Q1.7 sits in Q2.21 with 14 zero LSBs
+              |           |
+              |           v
+              |   [ Mult Result ] (23) Q2.21          [31, Q2.29]
+              |           |
+              +-------> / \
+                       /   \  Barrel Shifter, 30-bit          [62-bit]
+                      / <<E \ FRAC_PAD = 0, so this one is
+                     /_______\ truly bidirectional: a right
+                         |     shift really does drop bits
+                         v
+               [ Unified Fixed-Point ] (30) Q9.21              [47, Q9.38]
+                         |
+          +--------------+--------------+
+          |                             |
+          v (9)                         v (21) Q0.21           [39, Q0.38]
+  [ Integer Part ]              [ Fractional Part ]
+  (feeds Exp Adder)                     |
+          |                             v
+          |                   +--------------------+
+          |                   | Truncate to top 17 |  <-- x is now 17 bits
+          |                   +--------------------+
+          |                             |
+          |                             v (17) Q0.17           [38, Q0.38]
+          |                          [  x  ]
+          |                             |
+          |          +------------------+------------------+
+          |          |                                     |
+          |          v (7 MSB)                             |
+          |   +----------------+                           |
+          |   |      ROM       |  128 x 35 bits            |
+          |   |   128 x 35     |  = 0.5 BRAM36 / 1 RAMB18  |
+          |   +----------------+  [128 x 42]               |
+          |     |          |                               |
+          |(17) v          v (18)                          |
+          | [ Coeff a ]  [ Coeff b ]                       |
+          |  Q0.17         Q0.18                           |
+          |  [Q1.20,21]    [Q1.20,21]                      |
+          |     |            |                             |
+          |     v            |                             |
+          | +--------------------+                         |
+          | |   MUL 17 x 17      | <-----------------------+
+          | | ONE DSP48E1        |  no cascade, no partial-product split
+          | +--------------------+  [needed a cascade + SPLIT_MULT]
+          |          |
+          |          v (34) Q0.34                          [60]
+          |    [ Product ax ]
+          |          |
+          |          v
+          | +-------------------------------+
+          | |            SUB                |
+          | |  res = b - ax_hi - sticky     |  ax_hi = ax[33:16]
+          | |  18-bit borrow chain          |  sticky = |ax[15:0]
+          | |  + OR of the low 16 bits      |  [34-bit borrow chain,
+          | +-------------------------------+   half of it discarded]
+          |          |
+          |          v (18) Q0.18 UNSIGNED, in [0.5, 1)     [61, signed]
+          |  [ Unnormalized Res ]     no sign bit, no integer guard bits
+          |          |
+          |          v
+          | +-------------------------------+
+          | |        Normalization          |  NO priority encoder
+          | |  1 bit test + 2:1 mux         |  NO barrel shifter
+          | |  shift by 1 or 2              |  [62-bit encoder + 62-bit
+          | |  (STATIC_NORM=1: constant 1)  |   barrel shifter: the deepest
+          | +-------------------------------+   logic in the whole core]
+          |          |             |
+          |          |             +--> [ exp adj -1 or -2 ]
+          |          v (19) Q1.18                            [59]
+          |  [ Norm Mantissa ]
+          |          |
+          |          v
+          | +-------------------------------+
+          | |  Rounding Unit (RNE)          |  BASE_SHIFT = 11
+          | +-------------------------------+  EXT_MANT_W = 9
+          |              |
+          |              v (7)
+          |        [ Rounded M ]
+          v                    |
+  [ Final Exp Adder ]          |
+  (Bias + Shift + Int Part)    |
+          |                    |
+          v (8)                |
+    [ Final Exp ]              |
+          |                    |
+          v                    v
+  +--------------------------------------------------+
+  |               Output Composition                 |   bf16_recompose,
+  +--------------------------------------------------+   reused UNCHANGED
+                        |
+                        v
+                [ BF16 Output (16) ]
+
+
+-------------------------------------------------------------------------------
+WHERE THE SAVINGS COME FROM
+-------------------------------------------------------------------------------
+
+1. Rounding the log2(e) product to Q2.21 immediately, instead of carrying Q2.29
+   forward. 21 is the RNE minimum -- 20 breaks base-e. Plain truncation needs
+   22, which is unreachable because MANT_MULT_F is the module's own output
+   field width. That is why the core rounds rather than truncates.
+
+2. UNIFIED_F = MANT_MULT_F = 21, so FRAC_PAD = 0. The unified register drops
+   from 47 to 30 bits and the barrel shifter shrinks with it.
+
+3. x truncated to 17 bits, so both multiplier operands fit one DSP48E1.
+
+4. Dropping the dead integer bit from a and b. Over the whole input space
+   a is in [0.347983, 0.690553] and b is in [0.847980, 0.999993], so neither
+   ever reaches 1.0 and the Q1.20 integer bit is dead weight. ROM word goes
+   from 42 to 35 bits, which is what puts it in half a BRAM36.
+
+5. b - a*x is in [0.5, 1) for every reachable input, so the accumulator is
+   unsigned Q0.18: no sign bit, no integer guard bits, and normalisation
+   collapses to a bit test and a 2:1 mux.
+
+Points 4 and 5 are properties of THIS table over THIS input space, not
+identities. They are re-verified exhaustively by tests/exp_pwl_optim.cpp and by
+make rtl_optim_static_norm rather than being taken on trust.
+
+
+-------------------------------------------------------------------------------
+ROUND_MODE AND THE CRITICAL PATH
+-------------------------------------------------------------------------------
+
+RNE and half-up differ only on an exact tie. With LOG2E_VAL = 0x5c551d there is
+exactly ONE tie in the entire input space: mant_src = 0x80, i.e. inputs of the
+form +/-2^E, and only on the base-e path. The resulting 1 ULP at 2^-21 does not
+survive the final rounding to 7 mantissa bits, so both modes are bit-exact
+against bf16_exp2_approx.
+
+That equality is empirical, not an identity -- the width sweep fails at 20 bits
+for both modes, so the margin carrying it is about one bit. half-up therefore
+gets its own exhaustive run (make rtl_optim_half_up) instead of inheriting the
+RNE result.
+
+The choice is free at the output and not free in timing. With retiming maxed
+out (make sweep_optim, xc7a200t):
+
+    ROUND_MODE=0 RNE      164.8 MHz, 8 levels, critical path in u_log2e_mult
+    ROUND_MODE=1 half-up  177.5 MHz, 5 levels, critical path in u_round
+
+for 369 vs 368 LUT. The difference is the sticky OR and the lsb term feeding
+the rounding adder's carry-in; half-up needs only the guard bit.

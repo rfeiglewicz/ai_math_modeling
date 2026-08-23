@@ -19,6 +19,11 @@ SRC_EXP2="$COMMON $RTL/bf16_recompose.sv $RTL/bf16_log2e_mult.sv \
           $RTL/bf16_unified_shift.sv $RTL/bf16_coeff_rom.sv \
           $RTL/bf16_linear_approx.sv $RTL/bf16_normalize.sv \
           $RTL/bf16_round.sv $RTL/bf16_exp2.sv"
+SRC_OPTIM="$COMMON $RTL/bf16_exp2_optim_pkg.sv $RTL/bf16_recompose.sv \
+           $RTL/bf16_exp2_optim_rom.sv $RTL/bf16_exp2_optim_log2e_mult.sv \
+           $RTL/bf16_exp2_optim_shift.sv $RTL/bf16_exp2_optim_approx.sv \
+           $RTL/bf16_exp2_optim_normalize.sv $RTL/bf16_exp2_optim_round.sv \
+           $RTL/bf16_exp2_optim.sv"
 SRC_LUT="$COMMON $RTL/bf16_expe_lut_rom.sv $RTL/bf16_expe_lut.sv"
 SRC_HYB="$COMMON $RTL/bf16_expe_sparse_decode.sv $RTL/bf16_expe_hybrid_rom.sv $RTL/bf16_expe_hybrid.sv"
 SRC_CUT="$COMMON $RTL/bf16_expe_cut_rom.sv $RTL/bf16_expe_cut.sv"
@@ -27,6 +32,11 @@ SRC_P4="$COMMON $RTL/bf16_expe_poly4_rom.sv $RTL/bf16_expe_poly4.sv"
 RT_OFF_EXP2="-GRETIME_LOG2E=0 -GRETIME_SHIFT=0 -GRETIME_APPROX=0 -GRETIME_NORM=0 -GRETIME_ROUND=0 -GSPLIT_MULT=0"
 RT_ON_EXP2="-GRETIME_LOG2E=2 -GRETIME_SHIFT=1 -GRETIME_APPROX=3 -GRETIME_NORM=1 -GRETIME_ROUND=2 -GSPLIT_MULT=1"
 EXP2_OPT="-GDSP_SHIFT=1 -GMANT_MULT_ROUND_FRAC=21 -GRESET_DATAPATH=0"
+
+RT_OFF_OPTIM="-GRETIME_LOG2E=0 -GRETIME_SHIFT=0 -GRETIME_APPROX=0 -GRETIME_NORM=0 -GRETIME_ROUND=0"
+RT_ON_OPTIM="-GRETIME_LOG2E=1 -GRETIME_SHIFT=0 -GRETIME_APPROX=1 -GRETIME_NORM=0 -GRETIME_ROUND=1"
+RT_MAX_OPTIM="-GRETIME_LOG2E=2 -GRETIME_SHIFT=1 -GRETIME_APPROX=2 -GRETIME_NORM=1 -GRETIME_ROUND=2"
+OPTIM_BASE="-GRESET_DATAPATH=0"
 
 probe () {
     local label="$1" top="$2" src="$3"; shift 3
@@ -43,6 +53,10 @@ printf '%-18s %s\n' "core" "stages"
 probe "exp2 baseline"    bf16_exp2        "$SRC_EXP2" $RT_OFF_EXP2
 probe "exp2 opt"         bf16_exp2        "$SRC_EXP2" $EXP2_OPT $RT_OFF_EXP2
 probe "exp2 opt+retime"  bf16_exp2        "$SRC_EXP2" $EXP2_OPT $RT_ON_EXP2
+probe "exp2 optim"       bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE $RT_OFF_OPTIM
+probe "optim+retime"     bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE $RT_ON_OPTIM
+probe "optim max-retime" bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE $RT_MAX_OPTIM
+probe "optim half-up"    bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE -GROUND_MODE=1 $RT_MAX_OPTIM
 probe "expe full-lut"    bf16_expe_lut    "$SRC_LUT"
 probe "expe hybrid"      bf16_expe_hybrid "$SRC_HYB"
 probe "expe cut"         bf16_expe_cut    "$SRC_CUT" -GRETIME_CUT=0 -GRETIME_FE=0
