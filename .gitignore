@@ -1,0 +1,50 @@
+# =============================================================================
+# Build artefacts. None of this belongs in the repo -- it is all regenerable
+# from the sources by `make`.
+#
+# This file exists because these directories were committed once already and
+# had to be removed by hand (see "removed unnecessary object files"). Without
+# it, `git clean -fd` is also unusable: the optim core's sources sit untracked
+# until first commit, so a blind clean deletes real work along with the junk.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# C++ build output (Makefile BUILD_DIR)
+# -----------------------------------------------------------------------------
+build/
+
+# -----------------------------------------------------------------------------
+# Verilator. One obj_dir per configuration: obj_dir_optim_hu, obj_dir_opt_pl,
+# obj_dir_poly4_dsp_axi, ... roughly 700 KB each and there are dozens.
+# -----------------------------------------------------------------------------
+obj_dir/
+obj_dir_*/
+
+# -----------------------------------------------------------------------------
+# Vivado. .Xil is scratch state; the journals and logs land wherever vivado
+# happened to be launched from, which includes scripts/.
+# -----------------------------------------------------------------------------
+.Xil/
+*.jou
+*.log
+*.str
+*.pb
+*.rpx
+*.dcp
+.cache/
+.hbs/
+vivado_pid*.zip
+hs_err_pid*.log
+
+# -----------------------------------------------------------------------------
+# Compiler / editor leftovers
+# -----------------------------------------------------------------------------
+*.o
+*.d
+*.a
+*.so
+*.gch
+*.swp
+*~
+.DS_Store
+compile_commands.json
