@@ -24,6 +24,7 @@ TARGET_GEN_EXPE_LUT = $(BUILD_DIR)/gen_bf16_expe_lut
 TARGET_EXPE_LUT_TEST = $(BUILD_DIR)/bf16_expe_lut_test
 TARGET_GEN_EXPE_LUT_APPROX = $(BUILD_DIR)/gen_bf16_expe_lut_approx
 TARGET_EXPE_RANGE_PROBE = $(BUILD_DIR)/expe_range_probe
+TARGET_PWL_SEGMENT_STUDY = $(BUILD_DIR)/pwl_segment_study
 
 # Source files
 TEST_SRC_MAIN = $(TEST_DIR)/fp_utils_test.cpp
@@ -41,7 +42,7 @@ TEST_SRC_EXPE_LUT_TEST = $(TEST_DIR)/bf16_expe_lut_test.cpp
 TEST_SRC_GEN_EXPE_LUT_APPROX = $(TEST_DIR)/gen_bf16_expe_lut_approx.cpp
 
 # Default rule: build all
-.PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx gen_packed rne_sweep exp_pwl_optim gen_optim_coeffs exp2_optim clean clean_rtl clean_vivado clean_all
+.PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx gen_packed rne_sweep exp_pwl_optim pwl_segment_study gen_optim_coeffs exp2_optim clean clean_rtl clean_vivado clean_all
 
 all: $(TARGET_MAIN) $(TARGET_EXHAUSTIVE) $(TARGET_GEN_APPROX) $(TARGET_ULP_ANALYSIS) $(TARGET_LINEAR_APPROX) $(TARGET_GEN_PACKED) $(TARGET_RNE_SWEEP)
 
@@ -92,11 +93,21 @@ $(TARGET_GEN_EXPE_LUT_APPROX): $(TEST_SRC_GEN_EXPE_LUT_APPROX) | $(BUILD_DIR)
 $(TARGET_EXPE_RANGE_PROBE): $(TEST_DIR)/expe_range_probe.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
 
+$(TARGET_PWL_SEGMENT_STUDY): $(TEST_DIR)/pwl_segment_study.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
+
 # Measures the input exponent range each mode actually needs. The shared
 # INPUT_MIN_EXP/INPUT_MAX_EXP are the union of base-2 and base-e; this says
 # what base-e alone requires, which sets IN_CONV_INT_W for an expe-only core.
 expe_range_probe: $(TARGET_EXPE_RANGE_PROBE)
 	./$(TARGET_EXPE_RANGE_PROBE)
+
+# Is the 128-entry LUT actually needed? Emulates narrower LUTs by giving
+# groups of entries identical coefficients, refitting every segment from
+# scratch at each size. Scored on true ULP against exp2/exp, not on
+# bit-equality with production -- production is the 128-segment table.
+pwl_segment_study: $(TARGET_PWL_SEGMENT_STUDY)
+	./$(TARGET_PWL_SEGMENT_STUDY)
 
 # Run rules
 run: $(TARGET_MAIN)
