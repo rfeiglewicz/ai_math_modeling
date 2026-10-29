@@ -83,6 +83,13 @@ set RT_ON_OPTIM  "RETIME_LOG2E=1 RETIME_SHIFT=0 RETIME_APPROX=1 RETIME_NORM=0 RE
 set RT_MAX_OPTIM "RETIME_LOG2E=2 RETIME_SHIFT=1 RETIME_APPROX=2 RETIME_NORM=1 RETIME_ROUND=2"
 set OPTIM_BASE   "RESET_DATAPATH=0"
 
+# BASE_E_ONLY=1 removes the base-2 bypass mux, its alignment registers and one
+# bit of unified shift register, and tightens the early-out window to [-9, 6].
+# The point is comparability: full-lut, hybrid, cut and poly4 implement e^x and
+# nothing else, so charging the PWL core for a second mode they do not provide
+# makes the whole table misleading. Same arithmetic -- the width study re-run
+# with --base-e-only returns identical fractional widths.
+
 set variants [list \
   [list "exp2 baseline"    bf16_exp2        $src_exp2   "REGISTER_STAGES=1 PIPE_TARGET=0 $RT_OFF_EXP2"] \
   [list "exp2 opt"         bf16_exp2        $src_exp2   "REGISTER_STAGES=1 PIPE_TARGET=0 $EXP2_OPT $RT_OFF_EXP2"] \
@@ -91,6 +98,8 @@ set variants [list \
   [list "optim+retime"     bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE $RT_ON_OPTIM"] \
   [list "optim max-retime" bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE $RT_MAX_OPTIM"] \
   [list "optim half-up"   bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE ROUND_MODE=1 $RT_MAX_OPTIM"] \
+  [list "expe pwl"         bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE BASE_E_ONLY=1 $RT_OFF_OPTIM"] \
+  [list "expe pwl+retime"  bf16_exp2_optim  $src_optim  "REGISTER_STAGES=1 PIPE_TARGET=0 $OPTIM_BASE BASE_E_ONLY=1 ROUND_MODE=1 $RT_MAX_OPTIM"] \
   [list "expe full-lut"    bf16_expe_lut    $src_lut    "REGISTER_STAGES=1 PIPE_TARGET=0"] \
   [list "expe hybrid"      bf16_expe_hybrid $src_hybrid "REGISTER_STAGES=1 PIPE_TARGET=0"] \
   [list "expe cut"         bf16_expe_cut    $src_cut    "REGISTER_STAGES=1 PIPE_TARGET=0 RETIME_CUT=0 RETIME_FE=0"] \

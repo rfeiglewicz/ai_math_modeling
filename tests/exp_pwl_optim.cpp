@@ -39,6 +39,32 @@
 using pwl_optim::Cfg;
 
 // ===========================================================================
+// Mode selection
+// ===========================================================================
+
+/**
+ * @brief When set, base-2 patterns are skipped entirely.
+ *
+ * The shipped core serves both bases, so its minimum widths are the WORSE of
+ * the two. A core that only ever computes e^x is not bound by base-2, and the
+ * expe-only comparison cores (full-lut, hybrid, cut, poly4) are not either --
+ * comparing against them while carrying base-2 support is not a like-for-like
+ * measurement. Re-running the whole study with this flag set re-derives the
+ * minimums under the weaker constraint.
+ *
+ * A global rather than a template parameter on purpose: every sweep below is
+ * already a recursive template, and threading one more parameter through all
+ * of them would double the instantiation count for no benefit. The flag is
+ * set once in main() before any sweep runs and never changes afterwards.
+ */
+static bool g_base_e_only = false;
+
+/** @brief Label for the mode in effect, used in headings. */
+static const char* mode_label() {
+    return g_base_e_only ? "base-e only" : "both modes";
+}
+
+// ===========================================================================
 // Evaluation
 // ===========================================================================
 
@@ -64,6 +90,10 @@ Result evaluate(bool collect_stats = false) {
 
         for (int mode = 0; mode < 2; ++mode) {
             const bool base2 = (mode == 1);
+
+            // Base-e-only study: the base-2 path does not exist in the core
+            // being sized, so its patterns must not constrain the widths.
+            if (g_base_e_only && base2) continue;
 
             const uint16_t ref = bf16_exp2_approx<bf16_cfg::MANT_MULT_F>(in, base2);
             const uint16_t got = pwl_optim::approx<CFG>(in, base2, st);
@@ -235,11 +265,26 @@ void coeff_row() {
 // main
 // ===========================================================================
 
-int main() {
+int main(int argc, char** argv) {
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--base-e-only") {
+            g_base_e_only = true;
+        } else {
+            std::cerr << "usage: " << argv[0] << " [--base-e-only]\n";
+            return 2;
+        }
+    }
+
     std::cout << "############################################################\n"
-              << "#  bf16_exp2 PWL datapath width study                      #\n"
-              << "#  criterion: bit-exact vs bf16_exp2_approx<29> (both modes)#\n"
-              << "############################################################\n";
+              << "#  bf16_exp2 PWL datapath width study                      #\n";
+    if (g_base_e_only) {
+        std::cout << "#  criterion: bit-exact vs bf16_exp2_approx<29> (BASE-E)   #\n"
+                  << "#  base-2 patterns are EXCLUDED -- sizing an expe-only core #\n";
+    } else {
+        std::cout << "#  criterion: bit-exact vs bf16_exp2_approx<29> (both modes)#\n";
+    }
+    std::cout << "############################################################\n";
 
     std::cout << "\nProduction widths from bf16_cfg:\n"
               << "  MANT_SRC  Q" << bf16_cfg::MANT_SRC_I << "." << bf16_cfg::MANT_SRC_F
@@ -265,7 +310,8 @@ int main() {
                   << "Every result below would be meaningless. Aborting.\n";
         return 1;
     }
-    std::cout << "\nReplica matches production on all 65536 patterns in both modes.\n";
+    std::cout << "\nReplica matches production on all 65536 patterns ("
+              << mode_label() << ").\n";
 
     // -- 2 -----------------------------------------------------------------
     section("2. log2(e) product width, per quantisation mode");
@@ -477,7 +523,8 @@ int main() {
             { "normalised mant   ", bf16_cfg::POLY_OUT_W,                        19     },
         };
         std::cout << "  Configuration: MMF 21, UF 21, XF 17, CF 18, static norm, a Q0.17, b Q0.18\n"
-                  << "  Verified exhaustively: 65536 patterns x 2 modes, bit-exact.\n\n"
+                  << "  Verified exhaustively: 65536 patterns x "
+                  << (g_base_e_only ? "1 mode (base-e)" : "2 modes") << ", bit-exact.\n\n"
                   << "  | stage              | production | minimal | saved |\n"
                   << "  |--------------------|------------|---------|-------|\n";
         int tot_p = 0, tot_m = 0;

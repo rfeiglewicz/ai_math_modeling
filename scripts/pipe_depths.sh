@@ -57,6 +57,8 @@ probe "exp2 optim"       bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE $RT_OFF_OPTIM
 probe "optim+retime"     bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE $RT_ON_OPTIM
 probe "optim max-retime" bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE $RT_MAX_OPTIM
 probe "optim half-up"    bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE -GROUND_MODE=1 $RT_MAX_OPTIM
+probe "expe pwl"         bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE -GBASE_E_ONLY=1 $RT_OFF_OPTIM
+probe "expe pwl+retime"  bf16_exp2_optim  "$SRC_OPTIM" $OPTIM_BASE -GBASE_E_ONLY=1 -GROUND_MODE=1 $RT_MAX_OPTIM
 probe "expe full-lut"    bf16_expe_lut    "$SRC_LUT"
 probe "expe hybrid"      bf16_expe_hybrid "$SRC_HYB"
 probe "expe cut"         bf16_expe_cut    "$SRC_CUT" -GRETIME_CUT=0 -GRETIME_FE=0

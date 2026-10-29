@@ -289,15 +289,26 @@ static uint64_t run_backpressure(Vbf16_exp2_optim* dut, bool base2_mode,
 // main
 // ---------------------------------------------------------------------------
 int main(int argc, char** argv) {
+    // When the DUT is elaborated with BASE_E_ONLY=1 there is no base-2 path:
+    // s_axis_tuser is ignored and every input is treated as e^x. Driving the
+    // base-2 sweep at such a core would compare 2^x against an e^x datapath
+    // and report 65536 "failures" that say nothing about the design.
+    bool base_e_only = false;
+
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "--latency") == 0 && i + 1 < argc)
             RTL_LATENCY = std::atoi(argv[i + 1]);
+        else if (std::strcmp(argv[i], "--base-e-only") == 0)
+            base_e_only = true;
     }
 
     Verilated::commandArgs(argc, argv);
 
     std::cout << "=== RTL Compliance Test: bf16_exp2_optim (AXI-Stream) ===" << std::endl;
     std::cout << "Pipeline latency = " << RTL_LATENCY << " cycles" << std::endl;
+    if (base_e_only)
+        std::cout << "Mode: BASE-E ONLY (base-2 sweeps skipped; DUT has no base-2 path)"
+                  << std::endl;
 
     // --- step 0 -----------------------------------------------------------
     std::cout << "\n--- C++ model cross-check: optim vs production ---" << std::endl;
@@ -313,27 +324,39 @@ int main(int argc, char** argv) {
     Vbf16_exp2_optim* dut = new Vbf16_exp2_optim;
 
     uint64_t total2 = 0, nan2 = 0, totale = 0, nane = 0;
-    uint64_t err_sweep2 = run_exhaustive(dut, /*base2=*/true,  total2, nan2);
+    uint64_t err_sweep2 = 0;
+    if (!base_e_only)
+        err_sweep2 = run_exhaustive(dut, /*base2=*/true,  total2, nan2);
     uint64_t err_sweepe = run_exhaustive(dut, /*base2=*/false, totale, nane);
 
     uint64_t bp_total2 = 0, bp_totale = 0;
-    uint64_t err_bp2 = run_backpressure(dut, /*base2=*/true,  bp_total2);
+    uint64_t err_bp2 = 0;
+    if (!base_e_only)
+        err_bp2 = run_backpressure(dut, /*base2=*/true,  bp_total2);
     uint64_t err_bpe = run_backpressure(dut, /*base2=*/false, bp_totale);
 
     delete dut;
 
     std::cout << "\n=== Summary ===" << std::endl;
-    std::cout << "[sweep base2 2^x]   checked=" << total2
-              << "  nan_checked=" << nan2
-              << "  errors=" << err_sweep2
-              << "  " << (err_sweep2 == 0 ? "PASS" : "FAIL") << std::endl;
+    if (base_e_only) {
+        std::cout << "[sweep base2 2^x]   SKIPPED (no base-2 path in this build)" << std::endl;
+    } else {
+        std::cout << "[sweep base2 2^x]   checked=" << total2
+                  << "  nan_checked=" << nan2
+                  << "  errors=" << err_sweep2
+                  << "  " << (err_sweep2 == 0 ? "PASS" : "FAIL") << std::endl;
+    }
     std::cout << "[sweep base_e e^x]  checked=" << totale
               << "  nan_checked=" << nane
               << "  errors=" << err_sweepe
               << "  " << (err_sweepe == 0 ? "PASS" : "FAIL") << std::endl;
-    std::cout << "[stall base2 2^x]   checked=" << bp_total2
-              << "  errors=" << err_bp2
-              << "  " << (err_bp2 == 0 ? "PASS" : "FAIL") << std::endl;
+    if (base_e_only) {
+        std::cout << "[stall base2 2^x]   SKIPPED (no base-2 path in this build)" << std::endl;
+    } else {
+        std::cout << "[stall base2 2^x]   checked=" << bp_total2
+                  << "  errors=" << err_bp2
+                  << "  " << (err_bp2 == 0 ? "PASS" : "FAIL") << std::endl;
+    }
     std::cout << "[stall base_e e^x]  checked=" << bp_totale
               << "  errors=" << err_bpe
               << "  " << (err_bpe == 0 ? "PASS" : "FAIL") << std::endl;

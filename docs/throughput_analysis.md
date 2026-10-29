@@ -47,6 +47,8 @@ Uwaga o LUT: w raporcie Vivado `LUT as Logic` i `LUT as Memory` (kolumna
 | optim+retime | 402 | 200 | 2 | 0.5 | 115.5 | LUT | 334 | **38.6** |
 | optim max-retime | 406 | 272 | 2 | 0.5 | 164.8 | LUT | 331 | **54.5** |
 | optim half-up | 405 | 272 | 2 | 0.5 | 177.5 | LUT | 332 | **58.9** |
+| expe pwl | 445 | 137 | 2 | 0.5 | 80.4 | LUT | 302 | **24.3** |
+| expe pwl+retime | 380 | 261 | 2 | 0.5 | 177.5 | LUT | 354 | **62.8** |
 | expe full-lut | 40 | 54 | 0 | 2 | 283.4 | BRAM36 | 182 | **51.6** |
 | expe hybrid | 107 | 64 | 0 | 0.5 | 250.3 | BRAM36 | 730 | **182.7** |
 | expe cut | 254 | 110 | 1 | 0 | 117.0 | LUT | 529 | **61.9** |
@@ -73,6 +75,8 @@ sekunde daje rdzen w przeliczeniu na jeden zajety element danego typu
 | optim+retime | 0.3 | 57.8 | 231.0 |
 | optim max-retime | 0.4 | 82.4 | 329.6 |
 | optim half-up | 0.4 | 88.8 | 355.0 |
+| expe pwl | 0.2 | 40.2 | 160.8 |
+| expe pwl+retime | 0.5 | 88.8 | 355.0 |
 | expe full-lut | 7.1 | - | 141.7 |
 | expe hybrid | 2.3 | - | 500.6 |
 | expe cut | 0.5 | 117.0 | - |

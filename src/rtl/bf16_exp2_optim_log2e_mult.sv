@@ -56,6 +56,11 @@ module bf16_exp2_optim_log2e_mult
     parameter int LOG2E_VAL = LOG2E_VAL_DEFAULT,  // 0x5c551d
     parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 21
     parameter int ROUND_MODE      = 0,            // 0=RNE, 1=half-up, 2=trunc
+    // When set, the base-2 bypass does not exist: no mux, and mant_src stops
+    // riding along through the retiming registers. The base2 port is then
+    // ignored. Used by the expe-only build so that it can be compared against
+    // the other expe-only cores without carrying hardware they do not have.
+    parameter bit BASE_E_ONLY     = 1'b0,
     parameter bit REGISTER_OUTPUT = 1'b0,
     parameter bit RESET_DATAPATH  = 1'b1,
     // Retiming:
@@ -108,26 +113,46 @@ module bf16_exp2_optim_log2e_mult
     // -------------------------------------------------------------------------
     // Retiming register: separates the multiply from the rounding adder so the
     // register lands in the DSP48 PREG instead of the consumer's input register.
-    // mant_src and base2 ride along because the base2 bypass has to stay
-    // aligned with the rounded path.
+    //
+    // mant_src and base2 ride along ONLY when the base-2 bypass exists: they
+    // feed the mux below, which has to stay aligned with the rounded path.
+    // With BASE_E_ONLY there is no mux, so those 9 bits of delay are dead and
+    // the generate drops them.
     // -------------------------------------------------------------------------
     generate
         if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_mult_reg_rst
             always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) begin
-                    mant_mult <= '0; mant_src_d <= '0; base2_d <= 1'b1;
-                end else if (pipe_en) begin
-                    mant_mult <= mant_mult_raw; mant_src_d <= mant_src; base2_d <= base2;
-                end
+                if (!rst_n)       mant_mult <= '0;
+                else if (pipe_en) mant_mult <= mant_mult_raw;
             end
         end else if (EXTRA_STAGES >= 1) begin : gen_mult_reg
             always_ff @(posedge clk) begin
-                if (pipe_en) begin
-                    mant_mult <= mant_mult_raw; mant_src_d <= mant_src; base2_d <= base2;
-                end
+                if (pipe_en) mant_mult <= mant_mult_raw;
             end
         end else begin : gen_mult_wire
-            assign mant_mult  = mant_mult_raw;
+            assign mant_mult = mant_mult_raw;
+        end
+
+        if (BASE_E_ONLY) begin : gen_no_bypass_delay
+            // Nothing to align: the mux is gone. Tie the bypass signals off so
+            // they do not float; synthesis drops them as unused.
+            assign mant_src_d = '0;
+            assign base2_d    = 1'b0;
+        end else if (EXTRA_STAGES >= 1 && RESET_DATAPATH) begin : gen_bypass_reg_rst
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    mant_src_d <= '0; base2_d <= 1'b1;
+                end else if (pipe_en) begin
+                    mant_src_d <= mant_src; base2_d <= base2;
+                end
+            end
+        end else if (EXTRA_STAGES >= 1) begin : gen_bypass_reg
+            always_ff @(posedge clk) begin
+                if (pipe_en) begin
+                    mant_src_d <= mant_src; base2_d <= base2;
+                end
+            end
+        end else begin : gen_bypass_wire
             assign mant_src_d = mant_src;
             assign base2_d    = base2;
         end
@@ -176,15 +201,26 @@ module bf16_exp2_optim_log2e_mult
     //
     // Q1.7 sits in the Q2.21 field with MANT_MULT_F - MANT_SRC_F = 14 zero
     // LSBs and one spare integer bit, so the bypass is pure wiring.
+    //
+    // With BASE_E_ONLY the mux disappears and the rounded value goes straight
+    // out. That is the only functional difference between the two builds --
+    // every width in this module is driven by the base-e path, which the
+    // width study confirms is the binding constraint on all of them.
     // -------------------------------------------------------------------------
     localparam int ALIGN = MANT_MULT_F - MANT_SRC_F;  // 14
 
-    always_comb begin
-        if (base2_d)
-            mant_out_raw = MANT_MULT_W'({mant_src_d, {ALIGN{1'b0}}});
-        else
-            mant_out_raw = MANT_MULT_W'({rounded, {ZERO_LSBS{1'b0}}});
-    end
+    generate
+        if (BASE_E_ONLY) begin : gen_no_mux
+            assign mant_out_raw = MANT_MULT_W'({rounded, {ZERO_LSBS{1'b0}}});
+        end else begin : gen_mux
+            always_comb begin
+                if (base2_d)
+                    mant_out_raw = MANT_MULT_W'({mant_src_d, {ALIGN{1'b0}}});
+                else
+                    mant_out_raw = MANT_MULT_W'({rounded, {ZERO_LSBS{1'b0}}});
+            end
+        end
+    endgenerate
 
     // -------------------------------------------------------------------------
     // Second retiming register: isolates the rounding adder and the mux so

@@ -36,6 +36,13 @@ module bf16_exp2_optim_shift
 #(
     parameter bit REGISTER_OUTPUT = 1'b0,
     parameter bit RESET_DATAPATH  = 1'b1,
+    // Integer width of the unified value. The default covers base-2, whose
+    // largest shifted mantissa is 2 * 2^7 = 256. A base-e-only core shifts by
+    // at most 6 (see bf16_early_out MAX_EXP), so its largest value is
+    // 2.8738 * 2^6 = 183.9 and 8 bits are enough -- one bit off the barrel
+    // shifter. int_part keeps its full IN_CONV_INT_W width regardless, so the
+    // interface to the rounder does not move.
+    parameter int UNIFIED_INT_W   = IN_CONV_INT_W,
     // Retiming: 1 registers the shifted value before the slice logic.
     // Bit-exact; costs one cycle of latency.
     parameter int EXTRA_STAGES    = 0
@@ -51,12 +58,14 @@ module bf16_exp2_optim_shift
 
     // FRAC_PAD is zero by construction: UNIFIED_F == MANT_MULT_F.
     localparam int FRAC_PAD = UNIFIED_F - MANT_MULT_F;
+    // Width of the shifted value actually carried through this module.
+    localparam int SHIFT_W  = UNIFIED_INT_W + UNIFIED_F;
 
-    logic [UNIFIED_W-1:0] mant_aligned;
-    logic [UNIFIED_W-1:0] shifted_comb;
-    logic [UNIFIED_W-1:0] unified_shifted;
+    logic [SHIFT_W-1:0] mant_aligned;
+    logic [SHIFT_W-1:0] shifted_comb;
+    logic [SHIFT_W-1:0] unified_shifted;
 
-    assign mant_aligned = UNIFIED_W'({mant_in, {FRAC_PAD{1'b0}}});
+    assign mant_aligned = SHIFT_W'({mant_in, {FRAC_PAD{1'b0}}});
 
     // Exponent range is [-9, +7]; anything outside is masked by bf16_early_out
     // at the top level, so out-of-range shift amounts are don't-care.
@@ -101,7 +110,7 @@ module bf16_exp2_optim_shift
     logic signed [IN_CONV_INT_W-1:0] int_part_comb;
 
     assign x_comb        = unified_shifted[UNIFIED_F-1 -: X_F];
-    assign int_part_comb = -signed'(unified_shifted[UNIFIED_W-1 : UNIFIED_F]);
+    assign int_part_comb = -signed'({1'b0, unified_shifted[SHIFT_W-1 : UNIFIED_F]});
 
     generate
         if (REGISTER_OUTPUT && RESET_DATAPATH) begin : gen_reg

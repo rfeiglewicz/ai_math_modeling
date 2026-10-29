@@ -81,6 +81,19 @@ module bf16_exp2_optim
     // 1 = assume b - a*x >= 0.5 and shift by a constant.
     // 0 = test the top bit and shift by 1 or 2. Same width, same results.
     parameter bit STATIC_NORM = 1'b0,
+    // 1 = drop base-2 support entirely: s_axis_tuser is ignored, the bypass
+    //     mux and its alignment registers disappear, the early-out window
+    //     tightens to [-9, 6] and the unified shift register loses a bit.
+    //
+    // This exists so the PWL core can be compared against the expe-only cores
+    // (full-lut, hybrid, cut, poly4) on equal terms. Those carry no base-2
+    // path at all, so measuring the dual-mode build against them charges this
+    // core for hardware they were never asked to provide.
+    //
+    // It costs no precision: the width study re-run with --base-e-only returns
+    // exactly the same fractional widths, because base-e is the binding
+    // constraint on every one of them. The saving is structural, not numeric.
+    parameter bit BASE_E_ONLY = 1'b0,
     // 1 = asynchronous reset on datapath registers.
     // 0 = datapath registers have no reset. Safe because the output is only
     //     presented when m_axis_tvalid is high, and that comes from vld_sr
@@ -207,11 +220,19 @@ module bf16_exp2_optim
 
     // =========================================================================
     // Stage 2: Early-out detection  (shared with bf16_exp2, unmodified)
+    //
+    // The base-e-only build tightens the upper bound from 7 to 6: e^-128 is
+    // 2^-184, far below the smallest BF16 denormal, so every input in the
+    // exp=7 bin flushes to +0.0 without touching the datapath. Measured by
+    // tests/expe_range_probe.cpp, not assumed.
     // =========================================================================
     bf16_exp2_pkg::early_out_t s2_eo_code;
 
+    localparam int EO_MAX_EXP = BASE_E_ONLY ? 6 : bf16_exp2_pkg::INPUT_MAX_EXP;
+
     bf16_early_out #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .MAX_EXP        (EO_MAX_EXP)
     ) u_early_out (
         .clk       (clk),
         .rst_n     (rst_n),
@@ -235,7 +256,10 @@ module bf16_exp2_optim
     assign exp_delay[0] = s1_decomposed.exponent;
 
     generate
-        if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_align_regs
+        if (BASE_E_ONLY) begin : gen_no_base2
+            // Nothing downstream looks at it; the multiplier drops the mux.
+            assign s3_base2 = 1'b0;
+        end else if (REGISTER_STAGES && RESET_DATAPATH) begin : gen_align_regs
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n)       s3_base2 <= 1'b1;
                 else if (pipe_en) s3_base2 <= base2;
@@ -278,6 +302,7 @@ module bf16_exp2_optim
         .LOG2E_VAL           (LOG2E_VAL),
         .MANT_MULT_ROUND_FRAC(MANT_MULT_ROUND_FRAC),
         .ROUND_MODE          (ROUND_MODE),
+        .BASE_E_ONLY         (BASE_E_ONLY),
         .REGISTER_OUTPUT     (REGISTER_STAGES),
         .RESET_DATAPATH      (RESET_DATAPATH),
         .EXTRA_STAGES        (RT_LOG2E)
@@ -299,6 +324,7 @@ module bf16_exp2_optim
     bf16_exp2_optim_shift #(
         .REGISTER_OUTPUT(REGISTER_STAGES),
         .RESET_DATAPATH (RESET_DATAPATH),
+        .UNIFIED_INT_W  (BASE_E_ONLY ? IN_CONV_INT_W - 1 : IN_CONV_INT_W),
         .EXTRA_STAGES   (RT_SHIFT)
     ) u_shift (
         .clk     (clk),

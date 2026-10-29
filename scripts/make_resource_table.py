@@ -110,6 +110,32 @@ def main():
     A("ze slice, wiec limit rowna sie liczbie slice; BRAM36 bywa ulamkowy, bo")
     A("pojedynczy RAMB18 to pol kafelka.")
     A("")
+
+    # --- dwutrybowy PWL vs PWL tylko dla e^x -------------------------------
+    by_name = {r["core"]: r for r in cores}
+    both = by_name.get("optim half-up")
+    only = by_name.get("expe pwl+retime")
+    if both and only:
+        d_lut = num(both["lut_logic"]) - num(only["lut_logic"])
+        d_ff = num(both["ff"]) - num(only["ff"])
+        A("### Ile kosztuje drugi tryb w rdzeniu PWL")
+        A("")
+        A("`optim half-up` liczy **2^x i e^x**, pozostale rdzenie z grupy")
+        A("`expe *` licza wylacznie e^x. Zeby porownanie bylo uczciwe,")
+        A("`expe pwl` i `expe pwl+retime` to ten sam rdzen zsyntezowany z")
+        A("`BASE_E_ONLY=1`: bez multipleksera base-2/base-e, bez rejestrow")
+        A("wyrownujacych obejscie mnozarki log2(e), z szyna przesuwnika")
+        A("wezsza o bit i z oknem wczesnego wyjscia zacisnietym do `exp <= 6`.")
+        A("")
+        A("Rozne sa tylko te elementy - **szerokosci ulamkowe datapath sa")
+        A("identyczne**, bo to wlasnie sciezka e^x wyznaczala minimum na")
+        A("kazdej osi (zmierzone przez `make exp_pwl_optim_expe`).")
+        A("")
+        A("Drugi tryb kosztuje wiec **{} LUT i {} FF** ({} -> {} LUT) przy".format(
+            d_lut, d_ff, num(both["lut_logic"]), num(only["lut_logic"])))
+        A("niezmienionym Fmax ({} MHz) i niezmienionej glebokosci.".format(
+            both["fmax_mhz"]))
+        A("")
     A("## Udzial w ukladzie [%]")
     A("")
     A("| rdzen | LUT | FF | DSP48E1 | BRAM36 |")

@@ -16,7 +16,15 @@
 module bf16_early_out
     import bf16_exp2_pkg::*;
 #(
-    parameter bit REGISTER_OUTPUT = 1'b0
+    parameter bit REGISTER_OUTPUT = 1'b0,
+    // Exponent window handed to the polynomial core. The defaults are the
+    // UNION over base-2 and base-e, because the shipped core serves both.
+    // A core that only computes e^x can use a tighter upper bound: e^-128 is
+    // 2^-184, far below the smallest BF16 denormal, so the whole exp=7 bin
+    // flushes to +0.0 and never needs the datapath. Measured by
+    // tests/expe_range_probe.cpp: base-2 needs [-9, 7], base-e needs [-9, 6].
+    parameter int MIN_EXP         = INPUT_MIN_EXP,
+    parameter int MAX_EXP         = INPUT_MAX_EXP
 )(
     input  logic        clk,
     input  logic        rst_n,
@@ -41,9 +49,9 @@ module bf16_early_out
             eo_comb = EO_PLUS_ONE;
         end else begin
             // Negative normal or denormal
-            if ($signed(decomposed.exponent) < $signed(9'(INPUT_MIN_EXP)))
+            if ($signed(decomposed.exponent) < $signed(9'(MIN_EXP)))
                 eo_comb = EO_PLUS_ONE;
-            else if ($signed(decomposed.exponent) > $signed(9'(INPUT_MAX_EXP)))
+            else if ($signed(decomposed.exponent) > $signed(9'(MAX_EXP)))
                 eo_comb = EO_PLUS_ZERO;
             else
                 eo_comb = EO_NONE;

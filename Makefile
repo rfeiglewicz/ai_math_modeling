@@ -23,6 +23,7 @@ TARGET_EXP2_OPTIM_TEST = $(BUILD_DIR)/bf16_exp2_optim_test
 TARGET_GEN_EXPE_LUT = $(BUILD_DIR)/gen_bf16_expe_lut
 TARGET_EXPE_LUT_TEST = $(BUILD_DIR)/bf16_expe_lut_test
 TARGET_GEN_EXPE_LUT_APPROX = $(BUILD_DIR)/gen_bf16_expe_lut_approx
+TARGET_EXPE_RANGE_PROBE = $(BUILD_DIR)/expe_range_probe
 
 # Source files
 TEST_SRC_MAIN = $(TEST_DIR)/fp_utils_test.cpp
@@ -88,6 +89,15 @@ $(TARGET_EXPE_LUT_TEST): $(TEST_SRC_EXPE_LUT_TEST) | $(BUILD_DIR)
 $(TARGET_GEN_EXPE_LUT_APPROX): $(TEST_SRC_GEN_EXPE_LUT_APPROX) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
+$(TARGET_EXPE_RANGE_PROBE): $(TEST_DIR)/expe_range_probe.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
+
+# Measures the input exponent range each mode actually needs. The shared
+# INPUT_MIN_EXP/INPUT_MAX_EXP are the union of base-2 and base-e; this says
+# what base-e alone requires, which sets IN_CONV_INT_W for an expe-only core.
+expe_range_probe: $(TARGET_EXPE_RANGE_PROBE)
+	./$(TARGET_EXPE_RANGE_PROBE)
+
 # Run rules
 run: $(TARGET_MAIN)
 	./$(TARGET_MAIN)
@@ -116,6 +126,14 @@ rne_sweep: $(TARGET_RNE_SWEEP)
 # b - a*x accumulator that stay bit-exact with bf16_exp2_approx<29>.
 exp_pwl_optim: $(TARGET_PWL_OPTIM)
 	./$(TARGET_PWL_OPTIM)
+
+# Same study with the base-2 patterns excluded. The shipped core serves both
+# bases, so its widths are the worse of the two; the expe-only comparison
+# cores (full-lut, hybrid, cut, poly4) carry no base-2 support at all, so
+# sizing against both modes and then comparing against them is not like for
+# like. This re-derives the minimums under the base-e constraint alone.
+exp_pwl_optim_expe: $(TARGET_PWL_OPTIM)
+	./$(TARGET_PWL_OPTIM) --base-e-only
 
 # Regenerate the narrow coefficient ROM (a Q0.17, b Q0.18) from the shipped
 # Q1.20 table. Writes modeling/coeff_gen/bf16_exp2_optim_coeffs.hpp.
@@ -242,7 +260,8 @@ RTL_OPTIM_SRC = $(RTL_DIR)/bf16_exp2_pkg.sv \
                 $(RTL_DIR)/bf16_exp2_optim.sv
 
 .PHONY: rtl_optim_verify rtl_optim_verify_pipelined rtl_optim_static_norm \
-        rtl_optim_half_up rtl_optim_no_reset rtl_optim_round_frac_sweep rtl_optim_all
+        rtl_optim_half_up rtl_optim_no_reset rtl_optim_round_frac_sweep \
+        rtl_optim_expe rtl_optim_all
 
 rtl_optim_verify:
 	@echo "Building combinational optimised RTL (REGISTER_STAGES=0) ..."
@@ -323,8 +342,24 @@ rtl_optim_round_frac_sweep:
 	    rm -rf obj_dir_optim_rf ; \
 	done
 
+# Base-e-only build. Drops the base-2 bypass mux, its alignment registers and
+# one bit of unified shift register, and tightens the early-out window to
+# [-9, 6]. Exists so the PWL core can be measured against the other expe-only
+# cores (full-lut, hybrid, cut, poly4) without being charged for a mode they
+# do not implement.
+#
+# Same arithmetic: the width study re-run with --base-e-only returns identical
+# fractional widths, so this must stay bit-exact against bf16_exp2_approx() on
+# the base-e half of the input space.
+rtl_optim_expe:
+	@echo "Building pipelined optimised RTL (BASE_E_ONLY=1) ..."
+	$(VERILATOR) $(VER_OPTIM_FLAGS) -GREGISTER_STAGES=1 -GBASE_E_ONLY=1 \
+	    -Mdir obj_dir_optim_e $(VER_INC) $(RTL_OPTIM_SRC) --exe $(RTL_OPTIM_TB) $(VER_CFLAGS)
+	make -j -C obj_dir_optim_e -f Vbf16_exp2_optim.mk Vbf16_exp2_optim
+	./obj_dir_optim_e/Vbf16_exp2_optim --latency 16 --base-e-only
+
 rtl_optim_all: rtl_optim_verify rtl_optim_verify_pipelined rtl_optim_static_norm \
-               rtl_optim_half_up rtl_optim_no_reset
+               rtl_optim_half_up rtl_optim_no_reset rtl_optim_expe
 
 # -------------------------------------------------------------------------
 # Same design with the fabric barrel shifter replaced by a one-hot DSP
@@ -514,6 +549,8 @@ compare_cores_verify:
 	@$(MAKE) --no-print-directory rtl_opt_verify_pipelined | $(CMP_SUMMARY)
 	@echo "=================== exp2 width-optim ================"
 	@$(MAKE) --no-print-directory rtl_optim_verify_pipelined | $(CMP_SUMMARY)
+	@echo "=================== expe PWL (base-e only) =========="
+	@$(MAKE) --no-print-directory rtl_optim_expe | $(CMP_SUMMARY)
 	@echo "=================== expe full LUT ==================="
 	@$(MAKE) --no-print-directory rtl_expe_lut_verify_pipelined    | $(CMP_SUMMARY)
 	@echo "=================== expe hybrid ====================="
