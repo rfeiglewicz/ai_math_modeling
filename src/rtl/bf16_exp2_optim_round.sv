@@ -21,6 +21,23 @@
 //   7. carry fixup
 //   8. assemble the fp_raw_t
 //
+// Cost of the subnormal path, measured on xc7a200tfbg484-1 (EXTRA_STAGES=2,
+// out-of-context): hardwiring is_sub low takes this module from 130 LUT /
+// 57 FF / 184.3 MHz to 46 LUT / 46 FF / 419.1 MHz. So the variable right
+// shift is 84 LUT and it is what caps the whole core -- the critical path of
+// bf16_exp2_optim runs p1_shift -> p2_m_ext, inside this module.
+//
+// It serves 11 inputs. In base-e mode exactly 11 of the 2048 patterns that
+// reach the datapath produce a subnormal BF16 result, and they are
+// contiguous: 0xC2AF..0xC2B9, i.e. x in [-92.5, -87.5]. Everything else is
+// normal (1967) or flushed to zero (70).
+//
+// Those 11 could be served from a lookup in the early-out stage instead,
+// leaving a constant BASE_SHIFT here. Not done: the saving is ~84 LUT on a
+// 343-LUT core, which does not change where it stands against the other
+// expe implementations (cut+retime 228 LUT, hybrid 107, poly4 dsp 80,
+// full-lut 40). Recorded so the next person does not have to re-measure it.
+//
 // fp_raw_t comes from bf16_exp2_pkg by explicit qualification: the two
 // packages cannot be wildcard-imported together (they share many names with
 // different values), but the decomposed-BF16 struct is format plumbing and is
