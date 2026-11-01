@@ -6,10 +6,10 @@
 // Structurally identical to bf16_round; only the widths differ, and they are
 // what makes it cheap:
 //
-//   poly_mantissa   59 bits -> 19 bits
-//   BASE_SHIFT      51      -> 11
-//   sticky mask     59 bits -> 19 bits (3 groups instead of 8)
-//   variable shift  0..59   -> 0..19 for normals
+//   poly_mantissa   59 bits -> 17 bits
+//   BASE_SHIFT      51      -> 9
+//   sticky mask     59 bits -> 17 bits (3 groups instead of 8)
+//   variable shift  0..59   -> 0..17 for normals
 //
 // Steps (matches bf16_exp2_optim_core_approx in the C++ model):
 //   1. final_exponent = poly_exponent + exponent_bias
@@ -22,7 +22,8 @@
 //   8. assemble the fp_raw_t
 //
 // Cost of the subnormal path, measured on xc7a200tfbg484-1 (EXTRA_STAGES=2,
-// out-of-context): hardwiring is_sub low takes this module from 130 LUT /
+// out-of-context, on the earlier Q1.18 / 128-entry build): hardwiring is_sub
+// low takes this module from 130 LUT /
 // 57 FF / 184.3 MHz to 46 LUT / 46 FF / 419.1 MHz. So the variable right
 // shift is 84 LUT and it is what caps the whole core -- the critical path of
 // bf16_exp2_optim runs p1_shift -> p2_m_ext, inside this module.
@@ -62,7 +63,7 @@ module bf16_exp2_optim_round
     input  logic                            clk,
     input  logic                            rst_n,
     input  logic                            pipe_en,
-    input  logic [POLY_OUT_W-1:0]           poly_mantissa,   // Q1.18
+    input  logic [POLY_OUT_W-1:0]           poly_mantissa,   // Q1.16
     input  logic signed [8:0]               poly_exponent,
     input  logic signed [IN_CONV_INT_W-1:0] exponent_bias,
     output bf16_exp2_pkg::fp_raw_t          rounded_fp

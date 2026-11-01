@@ -5,11 +5,17 @@
  * @file bf16_exp2_optim.hpp
  * @brief Width-optimised, self-contained BF16 exp2 / expe core.
  *
- * Same algorithm as bf16_exp2.hpp, same results, narrower datapath. Every
- * width here was found by tests/exp_pwl_optim.cpp and is the smallest value
+ * Same algorithm as bf16_exp2.hpp, same results, narrower datapath and half
+ * the segments. The widths were found by tests/pwl_width_refit_study.cpp,
+ * which refits a 64-entry coefficient table for every candidate datapath and
+ * checks it exhaustively; this is the narrowest configuration on its grid
  * that keeps the core bit-identical to bf16_exp2_approx<29> over all 65536
- * BF16 patterns in both modes. One bit less on any of them breaks it; the
- * study prints the failing neighbours for each.
+ * BF16 patterns in both modes. The table itself is fitted by
+ * modeling/coeff_gen/gen_optim_coeffs.cpp with the same code.
+ *
+ * The landscape is not monotone: MANT_MULT_F 18 passes while 20 and 17 fail,
+ * X_F 16 passes while 17 fails at the other three widths shipped here. Every
+ * number below is an exhaustively verified point, not a bound.
  *
  * This header is deliberately independent: it does not include
  * bf16_exp2.hpp or bf16_exp2_core.hpp, and it does not reuse bf16_cfg. The
@@ -23,35 +29,35 @@
  * |----------------------|------------|-----------|--------------------------|
  * | mantissa source      | Q1.7   8b  | Q1.7   8b | unchanged                |
  * | log2(e) constant     | Q1.22 23b  | Q1.22 23b | unchanged                |
- * | log2(e) product      | Q2.29 31b  | Q2.21 23b | RNE, base-e path only    |
- * | unified shift reg    | Q9.38 47b  | Q9.21 30b |                          |
- * | polynomial input x   | Q0.38 38b  | Q0.17 17b | truncated slice          |
- * | coefficient a        | Q1.20 21b  | Q0.17 17b | integer bit is dead      |
- * | coefficient b        | Q1.20 21b  | Q0.18 18b | integer bit is dead      |
- * | a * x                | Q2.58 60b  | Q0.34 34b |                          |
- * | b - a*x              | Q4.58 62b  | Q0.18 18b | unsigned, no guard bits  |
- * | normalised mantissa  | Q1.58 59b  | Q1.18 19b |                          |
- * | coefficient ROM      | 128 x 42b  | 128 x 35b |                          |
+ * | log2(e) product      | Q2.29 31b  | Q2.18 20b | RNE, base-e path only    |
+ * | unified shift reg    | Q9.38 47b  | Q9.18 27b |                          |
+ * | polynomial input x   | Q0.38 38b  | Q0.16 16b | truncated slice          |
+ * | coefficient a        | Q1.20 21b  | Q0.11 11b | integer bit is dead      |
+ * | coefficient b        | Q1.20 21b  | Q0.16 16b | integer bit is dead      |
+ * | a * x                | Q2.58 60b  | Q0.27 27b |                          |
+ * | b - a*x              | Q4.58 62b  | Q0.16 16b | unsigned, no guard bits  |
+ * | normalised mantissa  | Q1.58 59b  | Q1.16 17b |                          |
+ * | coefficient ROM      | 128 x 42b  |  64 x 27b |                          |
  *
  * @section elims Structural eliminations
  *
  * Three pieces of production hardware are not merely narrower here, they are
  * gone. All three follow from one measured fact: b - a*x lands in [0.5, 1)
- * for every reachable input, because max(a*x) = 0.347323 and min(b) = 0.847980.
+ * for every reachable input -- the table fit enforces it as a constraint.
  *
  *  - The sign bit and the four integer guard bits of the accumulator. The
  *    subtraction cannot go negative and cannot exceed 1, so it is an
- *    unsigned Q0.18 operation.
+ *    unsigned Q0.16 operation.
  *  - The priority encoder over 62 bits.
  *  - The normalising barrel shifter over 62 bits.
  *
  * @section norm Normalisation, and one honest caveat
  *
  * "b - a*x is in [0.5, 1)" holds for every x the front end can produce, but
- * not for every x the datatype can hold. The linear fit of the last segment
- * undershoots by one accumulator LSB at x = 131071, the single largest code.
- * The largest reachable x is 130823, so nothing hits it, but the statement is
- * an input-space property rather than an identity.
+ * it is an input-space property rather than an identity: the fit only sees
+ * reachable inputs, so codes of x that no BF16 input produces are
+ * unconstrained. tests/bf16_exp2_optim_test.cpp audits the whole 2^X_F domain
+ * and reports how far the result strays there.
  *
  * Rather than lean on that, the default here keeps a guard, because it turns
  * out to cost nothing:
@@ -61,7 +67,7 @@
  *   - guarded (STATIC_NORM = false, default): test bit CALC_F-1 and shift by
  *     1 or 2, exponent -1 or -2.
  *
- * Both produce a 19-bit Q1.18 mantissa in [1.0, 2.0): res in [0.5, 1) shifted
+ * Both produce a 17-bit Q1.16 mantissa in [1.0, 2.0): res in [0.5, 1) shifted
  * by 1 and res in [0.25, 0.5) shifted by 2 land in the same range, so the
  * guarded form is not one bit wider. It is one bit test and a 2:1 mux against
  * a 62-bit priority encoder and a 62-bit barrel shifter, and it removes the
@@ -69,22 +75,19 @@
  * the input exponent range changes. The two agree bit-for-bit on every
  * reachable input; tests/bf16_exp2_optim_test.cpp checks that.
  *
- * The guarded form still assumes b - a*x >= 0.25, which has 1 ULP of margin
- * at the accumulator's own resolution and is therefore not a close call.
- *
  * @section subtract The subtraction
  *
- * a*x carries 34 fractional bits and b carries 18, so the naive form aligns
- * both to Q0.34 and truncates the difference back to Q0.18. That is a 34-bit
- * subtractor whose low 16 output bits are discarded.
+ * a*x carries 27 fractional bits and b carries 16, so the naive form aligns
+ * both to Q0.27 and truncates the difference back to Q0.16. That is a 27-bit
+ * subtractor whose low 11 output bits are discarded.
  *
- * Since the low 16 bits of the aligned b are zero, the same result comes out
- * of an 18-bit subtractor:
+ * Since the low 11 bits of the aligned b are zero, the same result comes out
+ * of a 16-bit subtractor:
  *
- *     floor(((b << 16) - ax) / 2^16) = b - ceil(ax / 2^16)
- *                                    = b - (ax >> 16) - (ax[15:0] != 0)
+ *     floor(((b << 11) - ax) / 2^11) = b - ceil(ax / 2^11)
+ *                                    = b - (ax >> 11) - (ax[10:0] != 0)
  *
- * i.e. an 18-bit subtract, a 16-input OR reduce and a borrow-in. That is the
+ * i.e. a 16-bit subtract, an 11-input OR reduce and a borrow-in. That is the
  * form implemented below, so the model matches what the RTL should build.
  *
  * @section rtl Mapping to RTL parameters
@@ -143,11 +146,14 @@ namespace bf16_optim_cfg {
     /**
      * @brief Fractional bits kept after RNE rounding of that product.
      *
-     * 21 is the minimum. 22 is the minimum if the rounder is replaced by plain
-     * truncation; round-half-up also reaches 21 and is cheaper than RNE in
-     * hardware, since the constant can ride in on a DSP48 C port.
+     * 18 with the 64-entry refitted table, under both RNE and round-half-up
+     * (the RTL builds both). Not monotone: at 20 and at 17 the refit finds no
+     * table that gets every base-e input right -- one input per width stays
+     * wrong. It is not a collision (no two inputs with different results map
+     * to the same polynomial input); the segment's line just cannot satisfy
+     * all of its points at once.
      */
-    constexpr int MANT_MULT_F = 21;
+    constexpr int MANT_MULT_F = 18;
     constexpr int MANT_MULT_W = MANT_MULT_I + MANT_MULT_F;
 
     // --- Unified shift register -------------------------------------------
@@ -159,27 +165,27 @@ namespace bf16_optim_cfg {
      * Cannot go below MANT_MULT_F: bits present in the product would be lost
      * before the right shift can move them into range.
      */
-    constexpr int UNIFIED_F = 21;
+    constexpr int UNIFIED_F = MANT_MULT_F;
     constexpr int UNIFIED_W = UNIFIED_I + UNIFIED_F;
 
     // --- Polynomial input --------------------------------------------------
     /** @brief Fractional bits of x entering the multiplier (truncated slice). */
-    constexpr int X_F = 17;
+    constexpr int X_F = 16;
     constexpr int X_W = X_F;
 
     // --- Look-up table -----------------------------------------------------
     constexpr int LUT_SIZE    = bf16_exp2_optim_packed::LUT_SIZE;
-    constexpr int LUT_ADDR_W  = 7;
+    constexpr int LUT_ADDR_W  = bf16_exp2_optim_packed::LUT_ADDR_W;
     constexpr int LUT_MAX_IDX = LUT_SIZE - 1;
     constexpr int PACKED_W    = bf16_exp2_optim_packed::PACKED_W;
 
     static_assert(1 << LUT_ADDR_W == LUT_SIZE, "LUT_ADDR_W must address LUT_SIZE");
 
     // --- Coefficients ------------------------------------------------------
-    /** @brief Slope: unsigned Q0.17, no integer bit. */
+    /** @brief Slope: unsigned Q0.11, no integer bit. */
     constexpr int A_F = bf16_exp2_optim_packed::A_F;
     constexpr int A_W = bf16_exp2_optim_packed::A_W;
-    /** @brief Offset: unsigned Q0.18, no integer bit. */
+    /** @brief Offset: unsigned Q0.16, no integer bit. */
     constexpr int B_F = bf16_exp2_optim_packed::B_F;
     constexpr int B_W = bf16_exp2_optim_packed::B_W;
 
@@ -189,7 +195,7 @@ namespace bf16_optim_cfg {
     constexpr int PROD_W = PROD_F;
 
     /** @brief b - a*x: unsigned, always in [0.5, 1). */
-    constexpr int CALC_F = 18;
+    constexpr int CALC_F = 16;
     constexpr int CALC_W = CALC_F;
 
     /** @brief Bits of a*x dropped when aligning to the accumulator. */
@@ -198,6 +204,13 @@ namespace bf16_optim_cfg {
     static_assert(CDROP >= 0, "a*x must be at least as fine as the accumulator");
     static_assert(B_F == CALC_F, "b feeds the accumulator directly");
 
+    // The table is only valid for the datapath it was fitted for.
+    static_assert(MANT_MULT_F == bf16_exp2_optim_packed::FIT_MANT_MULT_F &&
+                  X_F         == bf16_exp2_optim_packed::FIT_X_F &&
+                  CALC_F      == bf16_exp2_optim_packed::FIT_CALC_F,
+                  "coefficient table was fitted for different widths; "
+                  "re-run make gen_optim_coeffs");
+
     // --- Normalisation and rounding ----------------------------------------
     /** @brief MSB position of b - a*x for every reachable input. */
     constexpr int STATIC_MSB_IDX = CALC_F - 1;
@@ -205,11 +218,11 @@ namespace bf16_optim_cfg {
     constexpr int STATIC_POLY_EXP = -1;
 
     /**
-     * @brief Normalised mantissa: Q1.18, always in [1.0, 2.0).
+     * @brief Normalised mantissa: Q1.16, always in [1.0, 2.0).
      *
      * Width is the same for both normalisation variants. res in [0.5, 1)
      * shifted left by 1 and res in [0.25, 0.5) shifted left by 2 both land in
-     * [2^18, 2^19), so guarding the shift costs no extra bit.
+     * [2^16, 2^17), so guarding the shift costs no extra bit.
      */
     constexpr int POLY_OUT_I = 1;
     constexpr int POLY_OUT_F = CALC_F;
@@ -219,15 +232,15 @@ namespace bf16_optim_cfg {
     constexpr int BASE_SHIFT = POLY_OUT_F - TARGET_MANT_W;
 }
 
-/** @brief Polynomial input: unsigned Q0.17. */
+/** @brief Polynomial input: unsigned Q0.16. */
 typedef ac_int<bf16_optim_cfg::X_W, false> optim_x_t;
 
-/** @brief Unified shift register: unsigned Q9.21. */
+/** @brief Unified shift register: unsigned Q9.18. */
 typedef ac_fixed<bf16_optim_cfg::UNIFIED_W, bf16_optim_cfg::UNIFIED_I, false> optim_unified_t;
 
 /** @brief Normalised polynomial result. */
 struct OptimPolyResult {
-    ac_int<bf16_optim_cfg::POLY_OUT_W, false> mantissa;  ///< Q1.18, in [1.0, 2.0)
+    ac_int<bf16_optim_cfg::POLY_OUT_W, false> mantissa;  ///< Q1.16, in [1.0, 2.0)
     int32_t exponent;                                    ///< always STATIC_POLY_EXP
 };
 
@@ -241,7 +254,7 @@ struct OptimPolyResult {
  *                      false -> test the top bit and shift by 1 or 2 (default).
  *                      Identical results on every reachable input; see the
  *                      normalisation section of the file header.
- * @param x Polynomial input, unsigned Q0.17.
+ * @param x Polynomial input, unsigned Q0.16.
  * @return Normalised mantissa and its exponent.
  */
 template<bool STATIC_NORM = false>
@@ -256,11 +269,11 @@ inline OptimPolyResult bf16_exp2_optim_poly(optim_x_t x) {
     const ac_int<cfg::A_W, false> a = static_cast<uint32_t>(packed & ((1ull << cfg::A_W) - 1));
     const ac_int<cfg::B_W, false> b = static_cast<uint32_t>(packed >> cfg::A_W);
 
-    // --- a * x, unsigned Q0.34 --------------------------------------------
+    // --- a * x, unsigned Q0.27 --------------------------------------------
     const ac_int<cfg::PROD_W, false> ax = a * x;
 
     // --- b - a*x, narrow form ---------------------------------------------
-    // Truncating the aligned 34-bit difference down to Q0.18 is the same as
+    // Truncating the aligned 27-bit difference down to Q0.16 is the same as
     // subtracting the rounded-up high part of a*x. See the header comment.
     const ac_int<cfg::CALC_W, false> ax_hi = ax.template slc<cfg::CALC_W>(cfg::CDROP);
     const bool ax_lo_nonzero = (ax.template slc<cfg::CDROP>(0) != 0);
@@ -300,7 +313,7 @@ inline bool bf16_exp2_optim_static_norm_holds(const OptimPolyResult& r) {
 
 /** @brief Range-reduction output: polynomial input and exponent adjustment. */
 struct OptimFrontEnd {
-    optim_x_t x;               ///< polynomial input, unsigned Q0.17
+    optim_x_t x;               ///< polynomial input, unsigned Q0.16
     int32_t   exponent_bias;   ///< negated integer part of the shifted value
 };
 
@@ -322,7 +335,7 @@ inline OptimFrontEnd bf16_exp2_optim_front_end(const FPRaw& input_parts, bool ba
     mant_src[cfg::MANT_SRC_W - 1] = 1;
     mant_src.set_slc(0, (ac_int<cfg::TARGET_MANT_W, false>)input_parts.mantissa);
 
-    // --- 2. Base conversion: mant_src * log2(e), rounded to Q2.21 ----------
+    // --- 2. Base conversion: mant_src * log2(e), rounded to Q2.18 ----------
     // Base-2 bypasses this entirely, so the multiplier and its rounder sit on
     // the base-e path only.
     ac_fixed<cfg::LOG2E_W, cfg::LOG2E_I, false> log2e_const;

@@ -6,13 +6,18 @@
 // This is the hardware counterpart of the C++ model bf16_expe_lut_approx()
 // (src/approximations/bf16_expe_lut.hpp). Instead of a log2(e) multiply plus a
 // piecewise-linear approximation, every negative input whose unbiased exponent
-// lies in [-9, 7] is resolved by a direct, correctly-rounded (RNE) table lookup.
+// lies in [-9, 6] is resolved by a direct, correctly-rounded (RNE) table lookup.
 // The result is therefore <= 0.5 ULP by construction over the tabulated range.
+//
+// Range [-9, 6] rather than the C++ table's [-9, 7]: every exponent-7 input
+// (x <= -128) rounds to +0.0, so bf16_early_out with MAX_EXP = 6 answers it
+// and the ROM loses a row of zeros. 2048 entries fit one RAMB36 (2K x 18)
+// with an 11-bit address; the old 2176-entry table needed two.
 //
 // Architecture (3 functional sub-modules):
 //   1. bf16_decompose     - BF16 bit field decomposition
-//   2. bf16_early_out     - Special case / range check detector
-//   3. bf16_expe_lut_rom  - 2176 x 16-bit correctly-rounded exp(x) ROM (BRAM)
+//   2. bf16_early_out     - Special case / range check detector (MAX_EXP = 6)
+//   3. bf16_expe_lut_rom  - 2048 x 16-bit correctly-rounded exp(x) ROM (BRAM)
 //
 // Output selection:
 //   EO_QNAN      -> 0xFFC0  (qNaN indefinite)
@@ -54,12 +59,13 @@ module bf16_expe_lut
 );
 
     // =========================================================================
-    // Table geometry (mirrors bf16_expe_lut_table.hpp)
+    // Table geometry (bf16_expe_lut_table.hpp minus its all-zero exponent-7 row)
     // =========================================================================
+    localparam int LUT_MAX_EXP    = 6;                         // last stored exponent
     localparam int LUT_MANT_COUNT = 128;                       // 2^7 mantissa steps
-    localparam int LUT_DEPTH       = 2176;                      // 17 exponents * 128
-    localparam int LUT_ADDR_WIDTH  = 12;                        // $clog2(2176)
-    localparam int EXP_IDX_W        = 5;                        // (exp+9) in [0,16]
+    localparam int LUT_DEPTH      = 2048;                      // 16 exponents * 128
+    localparam int LUT_ADDR_WIDTH = 11;                        // $clog2(2048)
+    localparam int EXP_IDX_W      = 4;                         // (exp+9) in [0,15]
 
     // Early-out constant BF16 payloads come from bf16_exp2_pkg so that every
     // core emits byte-identical results.
@@ -130,7 +136,8 @@ module bf16_expe_lut
     early_out_t s2_eo_code;
 
     bf16_early_out #(
-        .REGISTER_OUTPUT(REGISTER_STAGES)
+        .REGISTER_OUTPUT(REGISTER_STAGES),
+        .MAX_EXP        (LUT_MAX_EXP)
     ) u_early_out (
         .clk       (clk),
         .rst_n     (rst_n),
@@ -141,7 +148,7 @@ module bf16_expe_lut
 
     // ROM address = (exponent - LUT_MIN_EXP) * 128 + mantissa
     //             = (exponent + 9) << 7 | mantissa
-    // Only meaningful when eo_code == EO_NONE (negative, exp in [-9, 7]).
+    // Only meaningful when eo_code == EO_NONE (negative, exp in [-9, 6]).
     logic signed [8:0]         exp_offset_comb;
     logic [EXP_IDX_W-1:0]      exp_index_comb;
     logic [LUT_ADDR_WIDTH-1:0] addr_comb;

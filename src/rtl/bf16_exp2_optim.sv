@@ -4,15 +4,16 @@
 // AXI-Stream interface, pin-compatible and latency-compatible with bf16_exp2.
 //
 // Same algorithm, same results, narrower datapath. Every width comes from
-// bf16_exp2_optim_pkg and is the smallest that keeps the core bit-identical
-// to bf16_exp2_approx<29> over all 65536 BF16 patterns in both modes.
+// bf16_exp2_optim_pkg: the narrowest point of the refit grid
+// (tests/pwl_width_refit_study.cpp) that keeps the core bit-identical to
+// bf16_exp2_approx<29> over all 65536 BF16 patterns in both modes.
 //
 // Architecture (8 functional sub-modules):
 //   1. bf16_decompose               - BF16 bit field decomposition   (shared)
 //   2. bf16_early_out               - special case / range detector  (shared)
-//   3. bf16_exp2_optim_log2e_mult   - log2(e) multiply, rounded to Q2.21
+//   3. bf16_exp2_optim_log2e_mult   - log2(e) multiply, rounded to Q2.18
 //   4. bf16_exp2_optim_shift        - exponent shift, int/frac split
-//   5. bf16_exp2_optim_approx       - 128 x 35 b ROM, 17x17 multiply, 18 b subtract
+//   5. bf16_exp2_optim_approx       - 64 x 27 b ROM, 11x16 multiply, 16 b subtract
 //   6. bf16_exp2_optim_normalize    - one bit test and a 2:1 mux
 //   7. bf16_exp2_optim_round        - RNE rounding and output assembly
 //   8. bf16_recompose               - FP recomposition to 16-bit BF16  (shared)
@@ -26,18 +27,18 @@
 // What changed against bf16_exp2
 //
 //   stage               production   here    saved
-//   log2(e) product     31 b         23 b       8
-//   unified shift reg   47 b         30 b      17
-//   polynomial input x  38 b         17 b      21
-//   coefficient a       21 b         17 b       4
-//   coefficient b       21 b         18 b       3
-//   a * x product       60 b         34 b      26
-//   b - a*x adder       62 b         18 b      44
-//   normalised mantissa 59 b         19 b      40
-//   datapath total     339 b        176 b     163
-//   coefficient ROM   5376 b       4480 b     896
+//   log2(e) product     31 b         20 b      11
+//   unified shift reg   47 b         27 b      20
+//   polynomial input x  38 b         16 b      22
+//   coefficient a       21 b         11 b      10
+//   coefficient b       21 b         16 b       5
+//   a * x product       60 b         27 b      33
+//   b - a*x adder       62 b         16 b      46
+//   normalised mantissa 59 b         17 b      42
+//   datapath total     339 b        150 b     189
+//   coefficient ROM   5376 b       1728 b    3648   (128 -> 64 segments)
 //
-//   multiplier shape   21 x 38  ->  17 x 17   (two cascaded DSP48 -> one)
+//   multiplier shape   21 x 38  ->  11 x 16   (two cascaded DSP48 -> one)
 //
 // Three pieces of hardware are gone rather than merely narrower: the sign bit
 // and integer guard bits of the accumulator, the 62-bit priority encoder and
@@ -64,19 +65,18 @@ module bf16_exp2_optim
     parameter int LOG2E_I    = LOG2E_I_DEFAULT,
     parameter int LOG2E_F    = LOG2E_F_DEFAULT,
     parameter int LOG2E_VAL  = LOG2E_VAL_DEFAULT,
-    // Fractional bits kept after rounding the log2(e) product. 21 is the
-    // verified minimum for RNE; lower values are expected to fail and the
+    // Fractional bits kept after rounding the log2(e) product. 18 is the
+    // verified width for RNE and half-up; lower values fail and the
     // rtl_optim_round_frac_sweep target checks that from the RTL side.
     parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,
     // 0 = RNE, 1 = round-half-up, 2 = truncate.
     //
     // RNE is the default because it is what the C++ model does, so the two
-    // stay literally the same arithmetic. But half-up reaches the same 21-bit
-    // minimum and synthesises better: with the retiming maxed out it moves the
-    // critical path off this multiply and buys 164.8 -> 177.5 MHz for one LUT.
-    // If Fmax matters more than model symmetry, build with ROUND_MODE=1; it is
-    // covered by make rtl_optim_round_frac_sweep OPTIM_ROUND_MODE=1.
-    // Truncation needs 22 bits and cannot be used here at all.
+    // stay literally the same arithmetic. But half-up is bit-exact at the same
+    // width (the coefficient table is fitted under both) and synthesises
+    // better: with the retiming maxed out it moves the critical path off this
+    // multiply. If Fmax matters more than model symmetry, build with
+    // ROUND_MODE=1. Truncation fails at 18 bits and cannot be used here.
     parameter int ROUND_MODE  = 0,
     // 1 = assume b - a*x >= 0.5 and shift by a constant.
     // 0 = test the top bit and shift by 1 or 2. Same width, same results.
@@ -90,9 +90,11 @@ module bf16_exp2_optim
     // path at all, so measuring the dual-mode build against them charges this
     // core for hardware they were never asked to provide.
     //
-    // It costs no precision: the width study re-run with --base-e-only returns
-    // exactly the same fractional widths, because base-e is the binding
-    // constraint on every one of them. The saving is structural, not numeric.
+    // It shares the widths and the table of the dual-mode build. The refit
+    // study finds base-e alone would allow one bit less of x and of a
+    // (X_F 15, A_F 10): at X_F 15 a base-2 input lands on the same polynomial
+    // input as a base-e input with a different result. Two bits were not worth
+    // a second package and a second ROM; the saving here is structural.
     parameter bit BASE_E_ONLY = 1'b0,
     // 1 = asynchronous reset on datapath registers.
     // 0 = datapath registers have no reset. Safe because the output is only
@@ -107,8 +109,8 @@ module bf16_exp2_optim
     parameter bit REPORT_DEPTH = 1'b0,
     // -------------------------------------------------------------------------
     // Retiming knobs, same meaning as in bf16_exp2 but with smaller defaults:
-    // this datapath has an 8x23 multiply, a 30-bit shifter, a 17x17 multiply
-    // and an 18-bit subtract, none of which need to be split as hard as the
+    // this datapath has an 8x23 multiply, a 27-bit shifter, an 11x16 multiply
+    // and a 16-bit subtract, none of which need to be split as hard as the
     // 21x30-into-62-bit chain in the production core.
     //
     //   RETIME_LOG2E  0..2  registers inside the log2(e) multiply
@@ -289,7 +291,7 @@ module bf16_exp2_optim
     assign s4_exponent = exp_delay[EXP_DELAY];
 
     // =========================================================================
-    // Stage 3: log2(e) multiply, rounded straight to Q2.21
+    // Stage 3: log2(e) multiply, rounded straight to Q2.18
     // =========================================================================
     logic [MANT_SRC_W-1:0]  s3_mant_src;
     logic [MANT_MULT_W-1:0] s3_mant_out;

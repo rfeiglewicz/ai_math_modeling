@@ -25,6 +25,7 @@ TARGET_EXPE_LUT_TEST = $(BUILD_DIR)/bf16_expe_lut_test
 TARGET_GEN_EXPE_LUT_APPROX = $(BUILD_DIR)/gen_bf16_expe_lut_approx
 TARGET_EXPE_RANGE_PROBE = $(BUILD_DIR)/expe_range_probe
 TARGET_PWL_SEGMENT_STUDY = $(BUILD_DIR)/pwl_segment_study
+TARGET_PWL_WIDTH_REFIT = $(BUILD_DIR)/pwl_width_refit_study
 
 # Source files
 TEST_SRC_MAIN = $(TEST_DIR)/fp_utils_test.cpp
@@ -42,7 +43,7 @@ TEST_SRC_EXPE_LUT_TEST = $(TEST_DIR)/bf16_expe_lut_test.cpp
 TEST_SRC_GEN_EXPE_LUT_APPROX = $(TEST_DIR)/gen_bf16_expe_lut_approx.cpp
 
 # Default rule: build all
-.PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx gen_packed rne_sweep exp_pwl_optim pwl_segment_study gen_optim_coeffs exp2_optim clean clean_rtl clean_vivado clean_all
+.PHONY: all run run_exhaustive gen_approx ulp_analysis run_linear_approx gen_packed rne_sweep exp_pwl_optim pwl_segment_study pwl_width_refit_study gen_optim_coeffs exp2_optim clean clean_rtl clean_vivado clean_all
 
 all: $(TARGET_MAIN) $(TARGET_EXHAUSTIVE) $(TARGET_GEN_APPROX) $(TARGET_ULP_ANALYSIS) $(TARGET_LINEAR_APPROX) $(TARGET_GEN_PACKED) $(TARGET_RNE_SWEEP)
 
@@ -75,8 +76,8 @@ $(TARGET_RNE_SWEEP): $(TEST_SRC_RNE_SWEEP) | $(BUILD_DIR)
 $(TARGET_PWL_OPTIM): $(TEST_SRC_PWL_OPTIM) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
 
-$(TARGET_GEN_OPTIM_COEFFS): $(SRC_GEN_OPTIM_COEFFS) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -Imodeling/coeff_gen -o $@ $<
+$(TARGET_GEN_OPTIM_COEFFS): $(SRC_GEN_OPTIM_COEFFS) src/approximations/bf16_exp2_pwl_refit.hpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 -Imodeling/coeff_gen -o $@ $<
 
 $(TARGET_EXP2_OPTIM_TEST): $(TEST_SRC_EXP2_OPTIM) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
@@ -96,6 +97,9 @@ $(TARGET_EXPE_RANGE_PROBE): $(TEST_DIR)/expe_range_probe.cpp | $(BUILD_DIR)
 $(TARGET_PWL_SEGMENT_STUDY): $(TEST_DIR)/pwl_segment_study.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
 
+$(TARGET_PWL_WIDTH_REFIT): $(TEST_DIR)/pwl_width_refit_study.cpp src/approximations/bf16_exp2_pwl_refit.hpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -O2 -o $@ $<
+
 # Measures the input exponent range each mode actually needs. The shared
 # INPUT_MIN_EXP/INPUT_MAX_EXP are the union of base-2 and base-e; this says
 # what base-e alone requires, which sets IN_CONV_INT_W for an expe-only core.
@@ -108,6 +112,16 @@ expe_range_probe: $(TARGET_EXPE_RANGE_PROBE)
 # bit-equality with production -- production is the 128-segment table.
 pwl_segment_study: $(TARGET_PWL_SEGMENT_STUDY)
 	./$(TARGET_PWL_SEGMENT_STUDY)
+
+# Minimum datapath widths at 64 segments, with the coefficient table refitted
+# for every configuration (bf16_exp2_pwl_refit.hpp, the same code that
+# gen_optim_coeffs uses). Per-axis sweeps, then the joint neighbourhood, then
+# the full MMF x XF x CF x AF grid -- the landscape is not monotone, so the
+# grid is what the shipped widths are chosen from. Grid compile takes ~1 min.
+pwl_width_refit_study: $(TARGET_PWL_WIDTH_REFIT)
+	./$(TARGET_PWL_WIDTH_REFIT) --segments 64
+	./$(TARGET_PWL_WIDTH_REFIT) --segments 64 --joint
+	./$(TARGET_PWL_WIDTH_REFIT) --segments 64 --grid
 
 # Run rules
 run: $(TARGET_MAIN)
@@ -146,8 +160,10 @@ exp_pwl_optim: $(TARGET_PWL_OPTIM)
 exp_pwl_optim_expe: $(TARGET_PWL_OPTIM)
 	./$(TARGET_PWL_OPTIM) --base-e-only
 
-# Regenerate the narrow coefficient ROM (a Q0.17, b Q0.18) from the shipped
-# Q1.20 table. Writes modeling/coeff_gen/bf16_exp2_optim_coeffs.hpp.
+# Fit the 64-entry coefficient ROM for the optim datapath (a Q0.11, b Q0.16)
+# and write it out twice: modeling/coeff_gen/bf16_exp2_optim_coeffs.hpp for
+# the C++ model, src/rtl/bf16_exp2_optim_rom.sv for the RTL. Refuses to write
+# unless the fit is bit-exact against bf16_exp2_approx<29> in both modes.
 gen_optim_coeffs: $(TARGET_GEN_OPTIM_COEFFS)
 	./$(TARGET_GEN_OPTIM_COEFFS)
 
@@ -321,24 +337,23 @@ rtl_optim_no_reset:
 	make -j -C obj_dir_optim_nr -f Vbf16_exp2_optim.mk Vbf16_exp2_optim
 	./obj_dir_optim_nr/Vbf16_exp2_optim --latency 16
 
-# Re-derive the minimum log2(e) product width from the RTL itself, rather than
-# trusting the C++ study. Measured (both modes, all 65536 patterns, compared
-# against bf16_exp2_approx):
+# Re-check the log2(e) product width from the RTL itself, rather than trusting
+# the C++ study. MANT_MULT_ROUND_FRAC < MANT_MULT_F zeroes low bits of the
+# Q2.18 field while keeping the table fitted for 18. Measured with the
+# 64-entry table (both modes, all 65536 patterns, against bf16_exp2_approx):
 #
-#   ROUND_MODE=0 RNE       21 PASS   20 FAIL   19 PASS
-#   ROUND_MODE=1 half-up   21 PASS   20 FAIL
-#   ROUND_MODE=2 truncate  21 FAIL
+#   ROUND_MODE=0 RNE       18 PASS   17 FAIL (6 e^x)   16 FAIL (7 e^x)
+#   ROUND_MODE=1 half-up   18 PASS   17 FAIL (6 e^x)   16 FAIL (7 e^x)
+#   ROUND_MODE=2 truncate  18 FAIL (3 e^x)
 #
-# 19 passing is not a licence to use it. The sweep is not monotone, because
-# the re-quantisation error has a sign and can cancel against the table's own
-# error at some widths and not others. 21 is the smallest width at and ABOVE
-# which every width passes, which is the only property worth building on.
+# The refit study (make pwl_width_refit_study) is the stronger statement: it
+# refits the table for each width, and still finds 17 failing in both modes
+# -- one base-e input stays wrong whatever the search picks for its segment.
+# Widths above 18 are not monotone either (20 fails),
+# which is why the shipped widths come from the full grid, not a bisection.
 #
-# Truncation at 21 fails, as the study predicted -- it needs 22, and 22 is not
-# reachable here: MANT_MULT_F is this module's own output field width, so
-# keeping more fractional bits would mean widening the whole downstream
-# datapath. That is why the core rounds instead of truncating.
-OPTIM_FRAC_LIST ?= 21 20 19
+# Truncation is not usable: it needs more fractional bits than it saves.
+OPTIM_FRAC_LIST ?= 18 17 16
 OPTIM_ROUND_MODE ?= 0
 
 rtl_optim_round_frac_sweep:

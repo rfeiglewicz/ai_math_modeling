@@ -1,6 +1,6 @@
 /**
  * @file gen_optim_coeffs.cpp
- * @brief Emits the narrow coefficient ROM for the width-optimised exp2 core,
+ * @brief Fits and emits the coefficient ROM for the width-optimised exp2 core,
  *        in both C++ and SystemVerilog form.
  *
  * Two outputs, one source of truth:
@@ -10,61 +10,99 @@
  * They are written in the same pass from the same array, so the model and the
  * hardware cannot drift apart.
  *
- * The shipped table (bf16_exp2_packed_coeffs.hpp) stores both coefficients as
- * Q1.20. Two facts, both established exhaustively by tests/exp_pwl_optim.cpp,
- * let that be cut down:
+ * History. The table used to be the shipped 128-entry Q1.20 table
+ * (bf16_exp2_packed_coeffs.hpp, fitted by gen_bf16_discrete_minmax.py)
+ * re-quantised to a Q0.17 / b Q0.18. Two later measurements replaced that:
  *
- *   - Neither coefficient ever reaches 1.0. Over every input pattern in both
- *     modes, a lands in [0.347983, 0.690553] and b in [0.847980, 0.999993].
- *     The integer bit of Q1.20 is therefore dead weight in every entry.
- *   - On the optimised datapath (log2e product 21 b, unified 21 b, x 17 b,
- *     accumulator 18 b) the fractional parts survive re-quantisation to
- *     a = Q0.17 and b = Q0.18 while the core stays bit-identical to
- *     bf16_exp2_approx<29>. One bit less on either coefficient breaks it.
+ *   - tests/pwl_segment_study.cpp: 64 segments are enough. The 128 came from
+ *     a fit that splits [0, 1) into equal BF16-value bins rather than by the
+ *     top bits of x, which is where the hardware puts the boundaries.
+ *   - tests/pwl_width_refit_study.cpp: with the table refitted per
+ *     configuration, every datapath width can drop further. The narrowest
+ *     configuration that passes in BOTH modes (searched over MMF 21..16,
+ *     XF 17..14, CF 18..15, AF 14..10) is the one below.
  *
- * 42 b/entry -> 35 b/entry, 5376 b -> 4480 b of ROM.
- *
- * The rounding applied here is round-half-up. The table is a constant, so the
- * choice costs nothing in hardware; it only has to reproduce the values the
- * study verified.
+ * The table is now fitted here directly, by bf16_exp2_pwl_refit.hpp -- the
+ * same code the study runs -- and the program refuses to write anything
+ * unless the result is bit-exact against bf16_exp2_approx<29> on every input
+ * in both modes, under both RTL log2(e) roundings (RNE and half-up), with
+ * b - a*x inside [0.5, 1).
  *
  * Build and run:  make gen_optim_coeffs
  */
 
-#include <iostream>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
-#include <cstdint>
+#include <iostream>
 
-#include "bf16_exp2_packed_coeffs.hpp"
+#include "bf16_exp2_pwl_refit.hpp"
 
 namespace {
 
-/** @brief Target fractional widths, as verified by tests/exp_pwl_optim.cpp. */
-constexpr int A_F = 17;
-constexpr int B_F = 18;
+/** @brief Number of piecewise-linear segments. */
+constexpr int LUT_SIZE   = 64;
+constexpr int LUT_ADDR_W = 6;
+static_assert((1 << LUT_ADDR_W) == LUT_SIZE, "LUT_ADDR_W must address LUT_SIZE");
+
+/**
+ * @brief Datapath the table is fitted for: MANT_MULT_F = UNIFIED_F = 18,
+ *        X_F = 16, CALC_F = B_F = 16, A_F = 11.
+ *
+ * bf16_exp2_optim.hpp and bf16_exp2_optim_pkg.sv must use exactly these;
+ * the emitted header carries them so the model can static_assert it.
+ */
+typedef pwl_refit::Widths<18, 16, 16, 11> W;
+
+constexpr int A_F = W::A_F;
+constexpr int B_F = W::B_F;
 constexpr int A_W = A_F;   // no integer bit: a < 1 always
 constexpr int B_W = B_F;   // no integer bit: b < 1 always
 constexpr int PACKED_W = A_W + B_W;
 
-/** @brief Re-quantise from @p from_f to @p to_f fractional bits, ties up. */
-uint64_t requantise(uint64_t raw, int from_f, int to_f) {
-    if (to_f >= from_f) return raw << (to_f - from_f);
-    const int d = from_f - to_f;
-    return (raw + (1ull << (d - 1))) >> d;
-}
-
-/** @brief Split one packed Q1.20 pair into its two raw integers. */
-void unpack_shipped(int idx, uint64_t& a_raw, uint64_t& b_raw) {
-    const uint64_t packed = bf16_exp2_packed::coeffs[idx].to_uint64();
-    const uint64_t mask = (1ull << bf16_exp2_packed::COEFF_W) - 1;
-    a_raw = packed & mask;
-    b_raw = (packed >> bf16_exp2_packed::COEFF_W) & mask;
-}
-
 } // namespace
 
 int main() {
+    // --- Fit and gate ----------------------------------------------------
+    const std::vector<pwl_refit::Point> pts = pwl_refit::collect_points<W>(false, bf16_cfg::INPUT_MAX_EXP);
+    const pwl_refit::Fit f = pwl_refit::fit<W>(LUT_SIZE, pts);
+
+    std::cout << "Fitted " << LUT_SIZE << " segments for MMF " << W::MANT_MULT_F
+              << ", X_F " << W::X_F << ", CALC_F " << W::CALC_F
+              << ", a Q0." << A_F << ", b Q0." << B_F << "\n"
+              << "  points        : " << pts.size() << "\n"
+              << "  mismatches    : e " << f.mismatch_e << ", 2 " << f.mismatch_2 << "\n"
+              << "  [0.5,1) viol. : " << f.norm_viol << "\n"
+              << "  max ULP       : e " << f.max_ulp_e << ", 2 " << f.max_ulp_2 << "\n";
+
+    if (!f.ok()) {
+        std::cerr << "Fit is not bit-exact against bf16_exp2_approx<29>; nothing written.\n";
+        return 1;
+    }
+    const int xbad = pwl_refit::cross_check<W>(f, false, bf16_cfg::INPUT_MAX_EXP);
+    std::cout << "  cross-check   : " << (xbad == 0 ? "ok" : "MISMATCH")
+              << " (pwl_optim::approx, all 65536 patterns x 2 modes x 2 roundings)\n";
+    if (xbad != 0) {
+        std::cerr << "Cross-check through pwl_optim::approx failed; nothing written.\n";
+        return 1;
+    }
+    if (f.a_max >= (1ull << A_W) || f.b_max >= (1ull << B_W)) {
+        std::cerr << "A coefficient needs an integer bit; nothing written.\n";
+        return 1;
+    }
+
+    // ROM index is inverted: entry i serves segment LUT_SIZE - 1 - i, so the
+    // decreasing 2^-x maps onto an increasing table.
+    uint64_t packed[LUT_SIZE];
+    for (int i = 0; i < LUT_SIZE; ++i) {
+        const int seg = LUT_SIZE - 1 - i;
+        packed[i] = (f.b[seg] << A_W) | f.a[seg];
+    }
+
+    const double as = static_cast<double>(1ull << A_F);
+    const double bs = static_cast<double>(1ull << B_F);
+
+    // --- Emit the C++ header ----------------------------------------------
     const char* out_path = "modeling/coeff_gen/bf16_exp2_optim_coeffs.hpp";
     std::ofstream out(out_path);
     if (!out) {
@@ -72,55 +110,37 @@ int main() {
         return 1;
     }
 
-    // --- Re-quantise and check the no-integer-bit claim on the way ---------
-    uint64_t a_new[bf16_exp2_packed::LUT_SIZE];
-    uint64_t b_new[bf16_exp2_packed::LUT_SIZE];
-    uint64_t a_max = 0, b_max = 0;
-
-    for (int i = 0; i < bf16_exp2_packed::LUT_SIZE; ++i) {
-        uint64_t a20, b20;
-        unpack_shipped(i, a20, b20);
-        a_new[i] = requantise(a20, bf16_exp2_packed::COEFF_F, A_F);
-        b_new[i] = requantise(b20, bf16_exp2_packed::COEFF_F, B_F);
-        if (a_new[i] > a_max) a_max = a_new[i];
-        if (b_new[i] > b_max) b_max = b_new[i];
-    }
-
-    // A coefficient rounding up to exactly 1.0 would need the integer bit back.
-    if (a_max >= (1ull << A_W)) {
-        std::cerr << "a overflows Q0." << A_F << " (max raw " << a_max << ").\n";
-        return 1;
-    }
-    if (b_max >= (1ull << B_W)) {
-        std::cerr << "b overflows Q0." << B_F << " (max raw " << b_max << ").\n";
-        return 1;
-    }
-
-    // --- Emit -------------------------------------------------------------
     out << "#ifndef BF16_EXP2_OPTIM_COEFFS_HPP\n"
         << "#define BF16_EXP2_OPTIM_COEFFS_HPP\n\n"
         << "/**\n"
         << " * @file bf16_exp2_optim_coeffs.hpp\n"
-        << " * @brief Narrow coefficient ROM for the width-optimised exp2 core.\n"
+        << " * @brief Coefficient ROM for the width-optimised exp2 core.\n"
         << " *\n"
         << " * GENERATED by modeling/coeff_gen/gen_optim_coeffs.cpp. Do not edit.\n"
         << " *\n"
-        << " * Re-quantised from the shipped Q1.20 table. Both integer bits are\n"
-        << " * dropped because no coefficient ever reaches 1.0:\n"
-        << " *   a : Q1.20 -> Q0." << A_F << "   b : Q1.20 -> Q0." << B_F << "\n"
-        << " *   " << bf16_exp2_packed::LUT_SIZE << " x "
-        << bf16_exp2_packed::PACKED_W << " b = "
-        << (bf16_exp2_packed::LUT_SIZE * bf16_exp2_packed::PACKED_W) << " b  ->  "
-        << bf16_exp2_packed::LUT_SIZE << " x " << PACKED_W << " b = "
-        << (bf16_exp2_packed::LUT_SIZE * PACKED_W) << " b\n"
+        << " * " << LUT_SIZE << " segments, fitted for the datapath MANT_MULT_F "
+        << W::MANT_MULT_F << ", X_F " << W::X_F << ", CALC_F " << W::CALC_F << ".\n"
+        << " * Bit-exact against bf16_exp2_approx<29> on every input in both modes,\n"
+        << " * under RNE and half-up rounding of the log2(e) product.\n"
+        << " *   a : Q0." << A_F << "  in [" << std::fixed << std::setprecision(6)
+        << f.a_min / as << ", " << f.a_max / as << "]\n"
+        << " *   b : Q0." << B_F << "  in [" << f.b_min / bs << ", " << f.b_max / bs << "]\n"
+        << std::defaultfloat
+        << " *   " << LUT_SIZE << " x " << PACKED_W << " b = " << (LUT_SIZE * PACKED_W) << " b\n"
         << " *\n"
-        << " * Packing matches the shipped table: b in the high field, a in the low.\n"
+        << " * Packing: b in the high field, a in the low.\n"
         << " *   packed = (b << " << A_W << ") | a\n"
+        << " * Entry i serves segment " << (LUT_SIZE - 1) << " - i (inverted index).\n"
         << " */\n\n"
         << "#include <cstdint>\n\n"
         << "namespace bf16_exp2_optim_packed {\n\n"
         << "    /** @brief Number of piecewise-linear segments. */\n"
-        << "    constexpr int LUT_SIZE = " << bf16_exp2_packed::LUT_SIZE << ";\n\n"
+        << "    constexpr int LUT_SIZE   = " << LUT_SIZE << ";\n"
+        << "    constexpr int LUT_ADDR_W = " << LUT_ADDR_W << ";\n\n"
+        << "    /** @brief Datapath widths this table was fitted for. */\n"
+        << "    constexpr int FIT_MANT_MULT_F = " << W::MANT_MULT_F << ";\n"
+        << "    constexpr int FIT_X_F         = " << W::X_F << ";\n"
+        << "    constexpr int FIT_CALC_F      = " << W::CALC_F << ";\n\n"
         << "    /** @brief Slope coefficient format: unsigned Q0." << A_F << ", strictly < 1. */\n"
         << "    constexpr int A_I = 0;\n"
         << "    constexpr int A_F = " << A_F << ";\n"
@@ -142,19 +162,18 @@ int main() {
         << "    /** @brief Packed coefficients: (b << " << A_W << ") | a. */\n"
         << "    constexpr uint64_t coeffs[LUT_SIZE] = {\n";
 
-    for (int i = 0; i < bf16_exp2_packed::LUT_SIZE; ++i) {
-        const uint64_t packed = (b_new[i] << A_W) | a_new[i];
+    const int nibbles = (PACKED_W + 3) / 4;
+    for (int i = 0; i < LUT_SIZE; ++i) {
         if (i % 4 == 0) out << "        ";
-        out << "0x" << std::hex << std::setw(9) << std::setfill('0') << packed
+        out << "0x" << std::hex << std::setw(nibbles) << std::setfill('0') << packed[i]
             << std::dec << std::setfill(' ') << "ull";
-        if (i != bf16_exp2_packed::LUT_SIZE - 1) out << ",";
+        if (i != LUT_SIZE - 1) out << ",";
         out << ((i % 4 == 3) ? "\n" : " ");
     }
 
     out << "    };\n\n"
         << "} // namespace bf16_exp2_optim_packed\n\n"
         << "#endif // BF16_EXP2_OPTIM_COEFFS_HPP\n";
-
     out.close();
 
     // --- Emit the SystemVerilog ROM ---------------------------------------
@@ -165,28 +184,21 @@ int main() {
         return 1;
     }
 
-    const int nibbles = (PACKED_W + 3) / 4;
-
     sv << "// ============================================================================="
        << "\n// bf16_exp2_optim_rom.sv\n"
-       << "// " << bf16_exp2_packed::LUT_SIZE << "-entry x " << PACKED_W
+       << "// " << LUT_SIZE << "-entry x " << PACKED_W
        << "-bit packed coefficient ROM for bf16_exp2_optim_approx.\n"
        << "//\n"
        << "// GENERATED by modeling/coeff_gen/gen_optim_coeffs.cpp. Do not edit.\n"
        << "// The same run also writes modeling/coeff_gen/bf16_exp2_optim_coeffs.hpp,\n"
        << "// so the RTL table and the C++ model table are the same numbers.\n"
        << "//\n"
-       << "// Each entry stores two unsigned coefficients with no integer bit:\n"
+       << "// Fitted for MANT_MULT_F " << W::MANT_MULT_F << ", X_F " << W::X_F
+       << ", CALC_F " << W::CALC_F << " (bf16_exp2_optim_pkg). Each entry\n"
+       << "// stores two unsigned coefficients with no integer bit:\n"
        << "//   data[" << (A_W - 1) << ":0]  = a  (slope,     Q0." << A_F << ")\n"
        << "//   data[" << (PACKED_W - 1) << ":" << A_W << "] = b  (intercept, Q0." << B_F << ")\n"
-       << "//\n"
-       << "// Neither coefficient ever reaches 1.0 over the whole BF16 input space\n"
-       << "// (a in [0.347983, 0.690553], b in [0.847980, 0.999993]), which is what\n"
-       << "// lets the integer bit of the shipped Q1.20 format be dropped:\n"
-       << "//   " << bf16_exp2_packed::LUT_SIZE << " x " << bf16_exp2_packed::PACKED_W
-       << " b = " << (bf16_exp2_packed::LUT_SIZE * bf16_exp2_packed::PACKED_W)
-       << " b  ->  " << bf16_exp2_packed::LUT_SIZE << " x " << PACKED_W
-       << " b = " << (bf16_exp2_packed::LUT_SIZE * PACKED_W) << " b\n"
+       << "//   " << LUT_SIZE << " x " << PACKED_W << " b = " << (LUT_SIZE * PACKED_W) << " b\n"
        << "//\n"
        << "// Parameters:\n"
        << "//   REGISTERED - 1: synchronous output register (BRAM inference)\n"
@@ -198,8 +210,8 @@ int main() {
        << "\n\n"
        << "module bf16_exp2_optim_rom #(\n"
        << "    parameter int DATA_W     = " << PACKED_W << ",\n"
-       << "    parameter int DEPTH      = " << bf16_exp2_packed::LUT_SIZE << ",\n"
-       << "    parameter int ADDR_W     = 7,\n"
+       << "    parameter int DEPTH      = " << LUT_SIZE << ",\n"
+       << "    parameter int ADDR_W     = " << LUT_ADDR_W << ",\n"
        << "    parameter bit REGISTERED = 1'b1\n"
        << ")(\n"
        << "    input  logic              clk,\n"
@@ -210,10 +222,9 @@ int main() {
        << "    (* rom_style = \"block\" *) logic [DATA_W-1:0] rom [0:DEPTH-1];\n\n"
        << "    initial begin\n";
 
-    for (int i = 0; i < bf16_exp2_packed::LUT_SIZE; ++i) {
-        const uint64_t packed = (b_new[i] << A_W) | a_new[i];
-        sv << "        rom[" << std::setw(3) << i << "] = " << PACKED_W << "'h"
-           << std::hex << std::setw(nibbles) << std::setfill('0') << packed
+    for (int i = 0; i < LUT_SIZE; ++i) {
+        sv << "        rom[" << std::setw(2) << i << "] = " << PACKED_W << "'h"
+           << std::hex << std::setw(nibbles) << std::setfill('0') << packed[i]
            << std::dec << std::setfill(' ') << ";\n";
     }
 
@@ -228,17 +239,13 @@ int main() {
        << "        end\n"
        << "    endgenerate\n\n"
        << "endmodule : bf16_exp2_optim_rom\n";
-
     sv.close();
 
     std::cout << "Wrote " << out_path << "\n"
               << "Wrote " << sv_path << "\n"
-              << "  entries   : " << bf16_exp2_packed::LUT_SIZE << "\n"
-              << "  a format  : Q0." << A_F << "  max raw " << a_max
-              << " / " << ((1ull << A_W) - 1) << "\n"
-              << "  b format  : Q0." << B_F << "  max raw " << b_max
-              << " / " << ((1ull << B_W) - 1) << "\n"
-              << "  ROM       : " << (bf16_exp2_packed::LUT_SIZE * bf16_exp2_packed::PACKED_W)
-              << " b -> " << (bf16_exp2_packed::LUT_SIZE * PACKED_W) << " b\n";
+              << "  a format  : Q0." << A_F << "  raw [" << f.a_min << ", " << f.a_max << "]\n"
+              << "  b format  : Q0." << B_F << "  raw [" << f.b_min << ", " << f.b_max << "]\n"
+              << "  ROM       : " << LUT_SIZE << " x " << PACKED_W << " b = "
+              << (LUT_SIZE * PACKED_W) << " b\n";
     return 0;
 }

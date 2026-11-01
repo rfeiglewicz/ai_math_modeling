@@ -31,14 +31,14 @@ trasowanie, wiec po implementacji te liczby spadna.
 | exp2 baseline | 7 | 901 | 25 | 248 | 2 | 4 | 1 | 2 | 48.9 | 17 |
 | exp2 opt | 7 | 584 | 23 | 153 | 11 | 5 | 1 | 2 | 50.6 | 15 |
 | exp2 opt+retime | 16 | 654 | 33 | 506 | 16 | 5 | 1 | 2 | 161.7 | 6 |
-| exp2 optim | 7 | 480 | 14 | 138 | 11 | 2 | 0.5 | 1 | 80.4 | 9 |
-| optim+retime | 10 | 391 | 14 | 200 | 11 | 2 | 0.5 | 1 | 115.5 | 7 |
-| optim max-retime | 15 | 369 | 14 | 272 | 37 | 2 | 0.5 | 1 | 164.8 | 8 |
-| optim half-up | 15 | 368 | 14 | 272 | 37 | 2 | 0.5 | 1 | 177.5 | 5 |
-| expe pwl | 7 | 434 | 14 | 137 | 11 | 2 | 0.5 | 1 | 80.4 | 9 |
-| expe pwl+retime | 15 | 343 | 14 | 261 | 37 | 2 | 0.5 | 1 | 177.5 | 5 |
-| expe full-lut | 4 | 40 | 0 | 54 | 0 | 0 | 2 | 0 | 283.4 | 1 |
-| expe hybrid | 4 | 107 | 0 | 64 | 0 | 0 | 0.5 | 1 | 250.3 | 3 |
+| exp2 optim | 7 | 372 | 12 | 132 | 11 | 2 | 0.5 | 1 | 79.6 | 9 |
+| optim+retime | 10 | 374 | 12 | 198 | 11 | 2 | 0.5 | 1 | 117.0 | 7 |
+| optim max-retime | 15 | 361 | 12 | 266 | 35 | 2 | 0.5 | 1 | 150.6 | 9 |
+| optim half-up | 15 | 359 | 12 | 266 | 35 | 2 | 0.5 | 1 | 179.5 | 7 |
+| expe pwl | 7 | 361 | 12 | 131 | 11 | 2 | 0.5 | 1 | 79.6 | 9 |
+| expe pwl+retime | 15 | 334 | 12 | 255 | 35 | 2 | 0.5 | 1 | 179.5 | 7 |
+| expe full-lut | 4 | 40 | 0 | 53 | 0 | 0 | 1 | 0 | 283.4 | 1 |
+| expe hybrid | 4 | 105 | 0 | 62 | 0 | 0 | 0.5 | 1 | 250.3 | 3 |
 | expe cut | 4 | 254 | 11 | 110 | 0 | 1 | 0 | 0 | 117.0 | 12 |
 | expe cut+retime | 7 | 228 | 11 | 190 | 13 | 1 | 0 | 0 | 193.2 | 8 |
 | expe poly4 | 7 | 142 | 0 | 101 | 19 | 5 | 0 | 0 | 110.2 | 4 |
@@ -65,8 +65,8 @@ Rozne sa tylko te elementy - **szerokosci ulamkowe datapath sa
 identyczne**, bo to wlasnie sciezka e^x wyznaczala minimum na
 kazdej osi (zmierzone przez `make exp_pwl_optim_expe`).
 
-Drugi tryb kosztuje wiec **25 LUT i 11 FF** (368 -> 343 LUT) przy
-niezmienionym Fmax (177.5 MHz) i niezmienionej glebokosci.
+Drugi tryb kosztuje wiec **25 LUT i 11 FF** (359 -> 334 LUT) przy
+niezmienionym Fmax (179.5 MHz) i niezmienionej glebokosci.
 
 ## Udzial w ukladzie [%]
 
@@ -75,14 +75,14 @@ niezmienionym Fmax (177.5 MHz) i niezmienionej glebokosci.
 | exp2 baseline | 0.669 | 0.092 | 0.541 | 0.274 |
 | exp2 opt | 0.434 | 0.057 | 0.676 | 0.274 |
 | exp2 opt+retime | 0.486 | 0.188 | 0.676 | 0.274 |
-| exp2 optim | 0.357 | 0.051 | 0.27 | 0.137 |
-| optim+retime | 0.29 | 0.074 | 0.27 | 0.137 |
-| optim max-retime | 0.274 | 0.101 | 0.27 | 0.137 |
-| optim half-up | 0.273 | 0.101 | 0.27 | 0.137 |
-| expe pwl | 0.322 | 0.051 | 0.27 | 0.137 |
-| expe pwl+retime | 0.255 | 0.097 | 0.27 | 0.137 |
-| expe full-lut | 0.03 | 0.02 | 0 | 0.548 |
-| expe hybrid | 0.079 | 0.024 | 0 | 0.137 |
+| exp2 optim | 0.276 | 0.049 | 0.27 | 0.137 |
+| optim+retime | 0.278 | 0.074 | 0.27 | 0.137 |
+| optim max-retime | 0.268 | 0.099 | 0.27 | 0.137 |
+| optim half-up | 0.267 | 0.099 | 0.27 | 0.137 |
+| expe pwl | 0.268 | 0.049 | 0.27 | 0.137 |
+| expe pwl+retime | 0.248 | 0.095 | 0.27 | 0.137 |
+| expe full-lut | 0.03 | 0.02 | 0 | 0.274 |
+| expe hybrid | 0.078 | 0.023 | 0 | 0.137 |
 | expe cut | 0.189 | 0.041 | 0.135 | 0 |
 | expe cut+retime | 0.169 | 0.071 | 0.135 | 0 |
 | expe poly4 | 0.105 | 0.038 | 0.676 | 0 |
@@ -105,14 +105,14 @@ wspoldzielic i realna liczba bylaby wieksza.
 | exp2 baseline | 149 | 1085 | 185 | 365 | **149** |
 | exp2 opt | 230 | 1759 | 148 | 365 | **148** |
 | exp2 opt+retime | 205 | 532 | 148 | 365 | **148** |
-| exp2 optim | 280 | 1950 | 370 | 730 | **280** |
-| optim+retime | 344 | 1346 | 370 | 730 | **344** |
-| optim max-retime | 364 | 989 | 370 | 730 | **364** |
-| optim half-up | 365 | 989 | 370 | 730 | **365** |
-| expe pwl | 310 | 1964 | 370 | 730 | **310** |
-| expe pwl+retime | 392 | 1031 | 370 | 730 | **370** |
-| expe full-lut | 3365 | 4985 | - | 182 | **182** |
-| expe hybrid | 1257 | 4206 | - | 730 | **730** |
+| exp2 optim | 361 | 2039 | 370 | 730 | **361** |
+| optim+retime | 359 | 1359 | 370 | 730 | **359** |
+| optim max-retime | 372 | 1012 | 370 | 730 | **370** |
+| optim half-up | 374 | 1012 | 370 | 730 | **370** |
+| expe pwl | 372 | 2054 | 370 | 730 | **370** |
+| expe pwl+retime | 402 | 1055 | 370 | 730 | **370** |
+| expe full-lut | 3365 | 5079 | - | 365 | **365** |
+| expe hybrid | 1281 | 4341 | - | 730 | **730** |
 | expe cut | 529 | 2447 | 740 | - | **529** |
 | expe cut+retime | 590 | 1416 | 740 | - | **590** |
 | expe poly4 | 947 | 2665 | 148 | - | **148** |

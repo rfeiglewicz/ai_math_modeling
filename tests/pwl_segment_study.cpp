@@ -64,6 +64,12 @@
  * matter if the BRAM is wanted for something else. It is not: the core is
  * limited by its 2 DSP48E1 (370 copies per device), not by memory or LUTs.
  *
+ * Follow-up: halving the segments alone saves nothing, but a refitted table
+ * also frees the datapath widths. tests/pwl_width_refit_study.cpp does that
+ * search at 64 segments, and the core now ships 64 entries with narrower
+ * widths (see bf16_exp2_optim_pkg.sv). This study is kept as the record of
+ * the segment-count question on its own, at the old widths.
+ *
  * Build: make pwl_segment_study
  */
 

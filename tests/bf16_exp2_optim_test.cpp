@@ -10,12 +10,12 @@
  *      approximation of an approximation.
  *
  *   2. The assumptions that removed hardware actually hold, checked over the
- *      whole 2^17 domain of the polynomial input rather than only the values
+ *      whole 2^X_F domain of the polynomial input rather than only the values
  *      reachable from a BF16 input:
  *        - b - a*x never goes negative        (no sign bit needed)
  *        - b - a*x stays below 1.0            (no integer guard bits needed)
  *        - b - a*x stays at or above 0.5      (normalisation is constant)
- *        - the narrow 18-bit subtract equals the naive 34-bit one
+ *        - the narrow CALC_F-bit subtract equals the naive PROD_F-bit one
  *
  *   3. ULP error against libm, for the record.
  *
@@ -31,6 +31,7 @@
 #include <vector>
 #include <cstdint>
 #include <cmath>
+#include <string>
 
 #include "../src/approximations/bf16_exp2.hpp"          // reference
 #include "../src/approximations/bf16_exp2_optim.hpp"    // device under test
@@ -104,7 +105,7 @@ static EquivResult check_equivalence() {
 //
 // Three pieces of hardware were removed on the strength of b - a*x staying in
 // [0.5, 1). That has to be checked against the set of polynomial inputs the
-// front end can actually produce, not against the 2^17 values the datatype can
+// front end can actually produce, not against the 2^X_F values the datatype can
 // hold. x is a truncated slice of a value derived from a 7-bit BF16 mantissa,
 // so the reachable set is sparse and the two are very different questions.
 // The audit answers both and treats only the first as a pass/fail criterion.
@@ -118,7 +119,7 @@ struct PolyAudit {
     int negative    = 0;   // b - a*x <  0     -> sign bit needed
     int above_one   = 0;   // b - a*x >= 1.0   -> integer guard bits needed
     int below_half  = 0;   // b - a*x <  0.5   -> normalisation not constant
-    int narrow_diff = 0;   // 18-bit subtract != 34-bit subtract
+    int narrow_diff = 0;   // narrow subtract != naive subtract
     int denorm_mant = 0;   // normalised mantissa MSB clear
 
     int64_t min_x_below_half = -1;  // smallest x that dips under 0.5
@@ -159,7 +160,7 @@ static void audit_one(int64_t x_raw, PolyAudit& a) {
         if (a.min_x_below_half < 0) a.min_x_below_half = x_raw;
     }
 
-    // The narrow 18-bit form must reproduce the truncated naive result.
+    // The narrow CALC_F-bit form must reproduce the truncated naive result.
     const int64_t naive_trunc = res >> cfg::CDROP;
     const OptimPolyResult p = bf16_exp2_optim_poly<false>(optim_x_t(int(x_raw)));
     const int64_t narrow = int64_t(p.mantissa.to_uint64()) >> (p.exponent == -1 ? 1 : 2);
@@ -194,7 +195,7 @@ static PolyAudit audit_reachable(std::vector<bool>& reachable) {
     return a;
 }
 
-/** @brief Audit the entire 2^17 domain, for the robustness margin. */
+/** @brief Audit the entire 2^X_F domain, for the robustness margin. */
 static PolyAudit audit_full_domain() {
     PolyAudit a;
     for (int64_t x = 0; x < (int64_t(1) << cfg::X_F); ++x) audit_one(x, a);
@@ -286,7 +287,7 @@ int main() {
               << std::setw(9) << ra.below_half << " |\n"
               << "  | mantissa MSB always set            | ditto                      | "
               << std::setw(10) << ra.denorm_mant << " |\n"
-              << "  | 18-bit subtract == 34-bit subtract | 16 subtractor bits         | "
+              << "  | narrow subtract == " << std::setw(2) << cfg::PROD_F << "-bit subtract | " << std::setw(2) << cfg::CDROP << " subtractor bits         | "
               << std::setw(10) << ra.narrow_diff << " |\n"
               << "  |------------------------------------|----------------------------|------------|\n";
 
@@ -298,7 +299,7 @@ int main() {
     std::cout << "\n  PASS on every reachable input.\n";
 
     // -- 2b ----------------------------------------------------------------
-    section("2b. Margin: the same assumptions over the full 2^17 domain");
+    section(("2b. Margin: the same assumptions over the full 2^" + std::to_string(cfg::X_F) + " domain").c_str());
 
     std::cout << "  b - a*x range      : [" << std::setprecision(9)
               << double(fa.min_res) / scale << ", "

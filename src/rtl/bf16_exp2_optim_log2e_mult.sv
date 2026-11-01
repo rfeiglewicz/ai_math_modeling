@@ -1,49 +1,38 @@
 // =============================================================================
 // bf16_exp2_optim_log2e_mult.sv
 // Multiplies the mantissa source (Q1.7) by log2(e) (Q1.22) and rounds the
-// Q2.29 product straight down to Q2.21. Used only when base2=0 (e^x mode);
+// Q2.29 product straight down to Q2.18. Used only when base2=0 (e^x mode);
 // when base2=1 the mantissa is passed through, left-aligned to the same
-// Q2.21 field.
+// Q2.18 field.
 //
 // Difference from bf16_log2e_mult: the wide product never leaves this module.
 // Production keeps all 31 bits of Q2.29 on the wire and only rounds if asked
-// to; here the rounded Q2.21 value IS the interface, which is what shrinks the
+// to; here the rounded Q2.18 value IS the interface, which is what shrinks the
 // unified shift register, the polynomial input and everything downstream.
 //
-// 21 fractional bits is the RNE minimum. 20 breaks expe. Truncation would need
-// 22, which this module cannot produce because MANT_MULT_F is its own output
-// width -- that is the reason it rounds rather than truncates.
+// 18 fractional bits holds with the 64-entry table, which is fitted under
+// both RNE and half-up. 17 fails, and so does truncation at 18 -- MANT_MULT_F
+// is this module's own output width, so truncation cannot buy extra bits.
 //
 // ROUND_MODE selects between RNE and round-half-up. They differ only on an
-// exact tie, and with LOG2E_VAL = 0x5c551d there is exactly ONE tie in the
-// whole input space: mant_src = 0x80, where the discarded 8 bits are 0x80 and
-// the lsb is 0, so RNE goes down and half-up goes up. That is the mantissa
-// field being all zeros, i.e. inputs of the form +/-2^E, and only on the
-// base-e path -- base2 bypasses this rounder entirely. The resulting 1 ULP at
-// 2^-21 does not survive the final rounding to 8 mantissa bits: both modes are
-// bit-exact against bf16_exp2_approx over all 65536 patterns x both bases
-// (make rtl_optim_verify_pipelined, make rtl_optim_half_up).
-//
-// That equality is an empirical property of this table and these widths, not
-// an identity -- which is why half-up has its own exhaustive run instead of
-// inheriting the RNE result. Note the width sweep fails at 20 bits for both
-// modes, so the margin carrying this is roughly one bit, not a comfortable one.
+// exact tie of the discarded 11 bits. Both are bit-exact against
+// bf16_exp2_approx over all 65536 patterns x both bases (make
+// rtl_optim_verify_pipelined, make rtl_optim_half_up) -- not by identity, but
+// because gen_optim_coeffs scores every base-e input under both roundings
+// when it fits the table. Change the table or the width and both must be
+// re-verified.
 //
 // The choice is therefore free at the output and worth making deliberately at
 // the timing level: with the retiming maxed out, the RNE adder in this module
-// IS the critical path of the whole core. Measured on xc7a200t (make sweep_optim):
-//
-//   ROUND_MODE=0 RNE      164.8 MHz, 8 levels, critical path starts here
-//   ROUND_MODE=1 half-up  177.5 MHz, 5 levels, critical path moves to the rounder
-//
-// for the same 368/369 LUT. The difference is the sticky OR and the lsb term
-// feeding the adder's carry-in; half-up needs only the guard bit.
+// was the critical path of the whole 128-entry core (164.8 vs 177.5 MHz,
+// make sweep_optim); half-up needs only the guard bit, RNE adds the sticky OR
+// and the lsb term on the adder's carry-in.
 //
 // Parameterizable:
 //   LOG2E_I/F/VAL         - the constant, Q1.22 by default
-//   MANT_MULT_ROUND_FRAC  - fractional bits kept after rounding (default 21).
-//                           Lower values leave (21 - value) zero LSBs in the
-//                           Q2.21 field, exactly as production does, so the
+//   MANT_MULT_ROUND_FRAC  - fractional bits kept after rounding (default 18).
+//                           Lower values leave (18 - value) zero LSBs in the
+//                           Q2.18 field, exactly as production does, so the
 //                           minimum can be re-derived from the RTL itself.
 //   ROUND_MODE            - 0 = RNE, 1 = round-half-up, 2 = truncate
 // =============================================================================
@@ -54,7 +43,7 @@ module bf16_exp2_optim_log2e_mult
     parameter int LOG2E_I   = LOG2E_I_DEFAULT,    // 1
     parameter int LOG2E_F   = LOG2E_F_DEFAULT,    // 22
     parameter int LOG2E_VAL = LOG2E_VAL_DEFAULT,  // 0x5c551d
-    parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 21
+    parameter int MANT_MULT_ROUND_FRAC = MANT_MULT_F,  // 18
     parameter int ROUND_MODE      = 0,            // 0=RNE, 1=half-up, 2=trunc
     // When set, the base-2 bypass does not exist: no mux, and mant_src stops
     // riding along through the retiming registers. The base2 port is then
@@ -74,23 +63,22 @@ module bf16_exp2_optim_log2e_mult
     input  logic                    pipe_en,
     input  logic                    base2,
     input  logic [MANT_SRC_W-1:0]   mant_src,   // Q1.7 unsigned
-    output logic [MANT_MULT_W-1:0]  mant_out    // Q2.21 unsigned
+    output logic [MANT_MULT_W-1:0]  mant_out    // Q2.18 unsigned
 );
 
     localparam int LOG2E_W = LOG2E_I + LOG2E_F;
 
-    // Bits discarded from the Q2.29 raw product. 8 by default.
+    // Bits discarded from the Q2.29 raw product. 11 by default.
     localparam int DISCARD_BITS = MANT_MULT_FULL_F - MANT_MULT_ROUND_FRAC;
     localparam int ROUNDED_W    = MANT_MULT_I + MANT_MULT_ROUND_FRAC;
-    // Zero LSBs left in the Q2.21 field when rounding harder than the default.
+    // Zero LSBs left in the Q2.18 field when rounding harder than the default.
     localparam int ZERO_LSBS    = MANT_MULT_F - MANT_MULT_ROUND_FRAC;
 
     // The output field is Q2.MANT_MULT_F, so asking to keep MORE fractional
-    // bits than that has nowhere to put them. Anything above 21 would have to
+    // bits than that has nowhere to put them. Anything above 18 would have to
     // widen MANT_MULT_F, and with it the unified shift register and the whole
-    // downstream datapath -- which is the opposite of the point. In particular
-    // the truncation minimum of 22 bits is not reachable from here; use RNE or
-    // round-half-up, both of which reach 21.
+    // downstream datapath -- and the coefficient table, which is fitted for
+    // exactly this width.
     if (MANT_MULT_ROUND_FRAC > MANT_MULT_F) begin : gen_bad_round_frac
         $error("MANT_MULT_ROUND_FRAC=%0d exceeds MANT_MULT_F=%0d; widen the package first",
                MANT_MULT_ROUND_FRAC, MANT_MULT_F);
@@ -199,7 +187,7 @@ module bf16_exp2_optim_log2e_mult
     // -------------------------------------------------------------------------
     // base2 / base-e mux.
     //
-    // Q1.7 sits in the Q2.21 field with MANT_MULT_F - MANT_SRC_F = 14 zero
+    // Q1.7 sits in the Q2.18 field with MANT_MULT_F - MANT_SRC_F = 11 zero
     // LSBs and one spare integer bit, so the bypass is pure wiring.
     //
     // With BASE_E_ONLY the mux disappears and the rounded value goes straight
@@ -207,7 +195,7 @@ module bf16_exp2_optim_log2e_mult
     // every width in this module is driven by the base-e path, which the
     // width study confirms is the binding constraint on all of them.
     // -------------------------------------------------------------------------
-    localparam int ALIGN = MANT_MULT_F - MANT_SRC_F;  // 14
+    localparam int ALIGN = MANT_MULT_F - MANT_SRC_F;  // 11
 
     generate
         if (BASE_E_ONLY) begin : gen_no_mux

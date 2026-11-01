@@ -4,9 +4,9 @@
 //
 // This is where most of the area saving is. Against bf16_linear_approx:
 //
-//   multiplier   21 x 30 cascaded over two DSP48 slices  ->  17 x 17, one slice
-//   subtractor   62-bit signed with four integer guards  ->  18-bit unsigned
-//   ROM word     42 bits                                 ->  35 bits
+//   multiplier   21 x 30 cascaded over two DSP48 slices  ->  11 x 16, one slice
+//   subtractor   62-bit signed with four integer guards  ->  16-bit unsigned
+//   ROM          128 x 42 bits                           ->  64 x 27 bits
 //
 // and the partial-product split (SPLIT_MULT) disappears with the cascade it
 // existed to break.
@@ -14,25 +14,27 @@
 // -----------------------------------------------------------------------------
 // The narrow subtraction
 //
-// a*x carries PROD_F = 34 fractional bits, b carries B_F = 18. The naive form
-// aligns both to Q0.34, subtracts, and throws away the low 16 bits of the
-// result -- a 34-bit borrow chain of which half is discarded.
+// a*x carries PROD_F = 27 fractional bits, b carries B_F = 16. The naive form
+// aligns both to Q0.27, subtracts, and throws away the low 11 bits of the
+// result -- a 27-bit borrow chain of which 11 bits are discarded.
 //
 // Because the low CDROP bits of the aligned b are zero, the same value comes
-// out of an 18-bit subtractor:
+// out of a 16-bit subtractor:
 //
-//     floor(((b << 16) - ax) / 2^16) = b - ceil(ax / 2^16)
-//                                    = b - (ax >> 16) - (ax[15:0] != 0)
+//     floor(((b << 11) - ax) / 2^11) = b - ceil(ax / 2^11)
+//                                    = b - (ax >> 11) - (ax[10:0] != 0)
 //
-// so: one 18-bit subtract, a 16-input OR reduce, and a borrow-in. The OR is a
+// so: one 16-bit subtract, an 11-input OR reduce, and a borrow-in. The OR is a
 // two-level LUT tree and runs in parallel with the subtract's own carry chain.
 //
 // -----------------------------------------------------------------------------
 // Why the result needs no sign bit and no integer bits
 //
-// max(a) = 0.690553, max(x) < 1 and min(b) = 0.847980 over the whole BF16
-// input space, and the measured max(a*x) is 0.347323. So b - a*x is in
-// [0.500657, 0.999992] and cannot go negative or reach 1.0. Q0.18 unsigned.
+// The coefficient table (modeling/coeff_gen/gen_optim_coeffs.cpp) is fitted
+// with b - a*x in [0.5, 1) as a hard constraint, and
+// tests/bf16_exp2_optim_test.cpp measures [0.500188, 0.999985] over the whole
+// 2^16 domain of x, reachable or not. So it cannot go negative or reach 1.0.
+// Q0.16 unsigned.
 // =============================================================================
 
 module bf16_exp2_optim_approx
@@ -52,8 +54,8 @@ module bf16_exp2_optim_approx
     input  logic              clk,
     input  logic              rst_n,
     input  logic              pipe_en,
-    input  logic [X_W-1:0]    x,     // Q0.17 unsigned
-    output logic [CALC_W-1:0] res    // Q0.18 unsigned, in [0.5, 1)
+    input  logic [X_W-1:0]    x,     // Q0.16 unsigned
+    output logic [CALC_W-1:0] res    // Q0.16 unsigned, in [0.5, 1)
 );
 
     // -------------------------------------------------------------------------
@@ -113,7 +115,7 @@ module bf16_exp2_optim_approx
     endgenerate
 
     // -------------------------------------------------------------------------
-    // a * x : Q0.17 * Q0.17 = Q0.34. Both operands fit the DSP48E1 A (25) and
+    // a * x : Q0.11 * Q0.16 = Q0.27. Both operands fit the DSP48E1 A (25) and
     // B (18) ports directly, so this is one slice with no cascade.
     // -------------------------------------------------------------------------
     logic [PROD_W-1:0] ax_comb;

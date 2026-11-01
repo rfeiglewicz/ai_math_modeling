@@ -28,6 +28,10 @@
  * The table stores RNE-rounded results, so the output is <= 0.5 ULP by
  * construction for the tabulated range.
  *
+ * Hardware note: the exponent-7 row of the table is all +0.0, so the RTL
+ * (bf16_expe_lut.sv, bf16_expe_hybrid.sv) stores only [-9, 6] and lets
+ * bf16_early_out (MAX_EXP = 6) produce the zeros. The results are identical.
+ *
  * @param raw_input Raw 16-bit BF16 payload
  * @return Raw 16-bit BF16 result of exp(x)
  */

@@ -1,6 +1,6 @@
 // =============================================================================
 // bf16_exp2_optim_shift.sv
-// Applies the input exponent to the Q2.21 mantissa and splits the result into
+// Applies the input exponent to the Q2.18 mantissa and splits the result into
 // the polynomial input and the exponent bias.
 //
 //   unified = mant_in << exponent    (exponent >= 0)
@@ -20,14 +20,14 @@
 //   2. The one-hot DSP shifter is not available. Production can collapse both
 //      shift directions into a single left shift only because the 9 pad bits
 //      guarantee the right shift is lossless; here they do not exist. The
-//      fabric barrel shifter is 30 bits wide instead of 47, so it is roughly
+//      fabric barrel shifter is 27 bits wide instead of 47, so it is roughly
 //      a third of the cost it was, and moving it to a DSP would have to
 //      re-introduce the padding it was the point of removing.
 //
 // Bit widths:
-//   mant_in : MANT_MULT_W = 23  (Q2.21 unsigned)
-//   unified : UNIFIED_W   = 30  (Q9.21 unsigned)
-//   x       : X_W         = 17  (Q0.17 unsigned)
+//   mant_in : MANT_MULT_W = 20  (Q2.18 unsigned)
+//   unified : UNIFIED_W   = 27  (Q9.18 unsigned)
+//   x       : X_W         = 16  (Q0.16 unsigned)
 //   int_part: IN_CONV_INT_W = 9 (signed, negated)
 // =============================================================================
 
@@ -50,9 +50,9 @@ module bf16_exp2_optim_shift
     input  logic                            clk,
     input  logic                            rst_n,
     input  logic                            pipe_en,
-    input  logic [MANT_MULT_W-1:0]          mant_in,    // Q2.21 unsigned
+    input  logic [MANT_MULT_W-1:0]          mant_in,    // Q2.18 unsigned
     input  logic signed [8:0]               exponent,   // unbiased input exponent
-    output logic [X_W-1:0]                  x,          // Q0.17 polynomial input
+    output logic [X_W-1:0]                  x,          // Q0.16 polynomial input
     output logic signed [IN_CONV_INT_W-1:0] int_part    // negated integer part
 );
 
@@ -95,8 +95,8 @@ module bf16_exp2_optim_shift
     // Split.
     //
     // Only the top X_F of the UNIFIED_F fraction bits reach the multiplier;
-    // the rest are dropped, which is what makes the polynomial input 17 bits
-    // instead of 21.
+    // the rest are dropped, which is what makes the polynomial input 16 bits
+    // instead of 18.
     //
     // int_part is a 9-bit signed negation of a 9-bit unsigned field, so the
     // base-e path can wrap: the largest value the front end can produce is

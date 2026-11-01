@@ -3,10 +3,14 @@
 // Bit widths for the width-optimised BF16 exp2 / expe core.
 //
 // Mirrors the C++ namespace bf16_optim_cfg in
-// src/approximations/bf16_exp2_optim.hpp one-for-one. Every constant here is
-// the smallest value that keeps the core bit-identical to bf16_exp2_approx<29>
-// over all 65536 BF16 patterns in both modes; tests/exp_pwl_optim.cpp finds
-// them and prints the failing neighbour for each.
+// src/approximations/bf16_exp2_optim.hpp one-for-one. The widths come from
+// tests/pwl_width_refit_study.cpp, which refits the 64-entry coefficient
+// table for every candidate datapath and checks it exhaustively: this is the
+// narrowest point on its grid that keeps the core bit-identical to
+// bf16_exp2_approx<29> over all 65536 BF16 patterns in both modes, under
+// both log2(e) roundings (ROUND_MODE 0 and 1). The table in
+// bf16_exp2_optim_rom.sv is fitted for exactly these widths by
+// modeling/coeff_gen/gen_optim_coeffs.cpp; change one and re-run it.
 //
 // This package is deliberately separate from bf16_exp2_pkg. The production
 // constants are all anchored to MANT_MULT_F = 29, so sharing them would either
@@ -19,18 +23,19 @@
 // recompose, pipe_pad) require them. Those four are format-level glue, are
 // identical in both cores, and are instantiated unchanged.
 //
-// Width summary:
+// Width summary (128-entry predecessor in brackets):
 //   MANT_SRC_W  =  8  (Q1.7  unsigned)   unchanged from production
 //   LOG2E_W     = 23  (Q1.22 unsigned)   unchanged from production
-//   MANT_MULT_W = 23  (Q2.21 unsigned)   was 31
-//   UNIFIED_W   = 30  (Q9.21 unsigned)   was 47
-//   X_W         = 17  (Q0.17 unsigned)   was 38
-//   A_W         = 17  (Q0.17 unsigned)   was 21 (Q1.20)
-//   B_W         = 18  (Q0.18 unsigned)   was 21 (Q1.20)
-//   PROD_W      = 34  (Q0.34 unsigned)   was 60
-//   CALC_W      = 18  (Q0.18 unsigned)   was 62 signed
-//   POLY_OUT_W  = 19  (Q1.18 unsigned)   was 59
-//   PACKED_W    = 35  (ROM word)         was 42
+//   MANT_MULT_W = 20  (Q2.18 unsigned)   [23]  production 31
+//   UNIFIED_W   = 27  (Q9.18 unsigned)   [30]  production 47
+//   X_W         = 16  (Q0.16 unsigned)   [17]  production 38
+//   A_W         = 11  (Q0.11 unsigned)   [17]  production 21 (Q1.20)
+//   B_W         = 16  (Q0.16 unsigned)   [18]  production 21 (Q1.20)
+//   PROD_W      = 27  (Q0.27 unsigned)   [34]  production 60
+//   CALC_W      = 16  (Q0.16 unsigned)   [18]  production 62 signed
+//   POLY_OUT_W  = 17  (Q1.16 unsigned)   [19]  production 59
+//   PACKED_W    = 27  (ROM word)         [35]  production 42
+//   LUT_SIZE    = 64                     [128] production 128
 // =============================================================================
 
 package bf16_exp2_optim_pkg;
@@ -69,16 +74,16 @@ package bf16_exp2_optim_pkg;
     // log2(e) product.
     //
     // The raw product is Q2.29 as in production; the difference is that it is
-    // rounded to Q2.21 immediately and only the rounded value is carried
-    // forward. 21 is the RNE minimum: 20 breaks expe. Plain truncation needs
-    // 22, round-half-up also reaches 21 and is cheaper in hardware because the
-    // constant can ride in on a DSP48 C port.
+    // rounded to Q2.18 immediately and only the rounded value is carried
+    // forward. 18 holds under RNE and half-up with the 64-entry table; the
+    // sweep is not monotone (at 20 and at 17 the refit leaves one base-e
+    // input wrong), so 18 is a verified point, not a bound.
     // =========================================================================
     localparam int MANT_MULT_I      = MANT_SRC_I + LOG2E_I_DEFAULT;      // 2
     localparam int MANT_MULT_FULL_F = MANT_SRC_F + LOG2E_F_DEFAULT;      // 29
     localparam int MANT_MULT_FULL_W = MANT_MULT_I + MANT_MULT_FULL_F;    // 31
-    localparam int MANT_MULT_F      = 21;
-    localparam int MANT_MULT_W      = MANT_MULT_I + MANT_MULT_F;         // 23
+    localparam int MANT_MULT_F      = 18;
+    localparam int MANT_MULT_W      = MANT_MULT_I + MANT_MULT_F;         // 20
 
     // =========================================================================
     // Unified shift register.
@@ -91,66 +96,67 @@ package bf16_exp2_optim_pkg;
     // =========================================================================
     localparam int IN_CONV_INT_W    = INPUT_MAX_EXP + MANT_MULT_I;       // 9
     localparam int UNIFIED_I        = IN_CONV_INT_W;                     // 9
-    localparam int UNIFIED_F        = 21;
-    localparam int UNIFIED_W        = UNIFIED_I + UNIFIED_F;             // 30
+    localparam int UNIFIED_F        = MANT_MULT_F;                       // 18
+    localparam int UNIFIED_W        = UNIFIED_I + UNIFIED_F;             // 27
 
     // =========================================================================
     // Polynomial input: top X_F fractional bits of the shifted value,
     // plain truncation.
     // =========================================================================
-    localparam int X_F              = 17;
-    localparam int X_W              = X_F;                               // 17
+    localparam int X_F              = 16;
+    localparam int X_W              = X_F;                               // 16
 
     // =========================================================================
-    // Look-up table
+    // Look-up table: 64 segments, indexed by the top 6 bits of x.
     // =========================================================================
-    localparam int LUT_SIZE         = 128;
-    localparam int LUT_ADDR_W       = 7;
+    localparam int LUT_SIZE         = 64;
+    localparam int LUT_ADDR_W       = 6;
 
     // =========================================================================
-    // Coefficients. Neither ever reaches 1.0 over the whole input space
-    // (a in [0.347983, 0.690553], b in [0.847980, 0.999993]), so the integer
-    // bit of the shipped Q1.20 format is dead weight and is dropped.
+    // Coefficients. Neither ever reaches 1.0 (a in [0.348, 0.689], b in
+    // [0.848, 0.99999]), so neither carries an integer bit. a needs far fewer
+    // fractional bits than b: it only scales x in [0, 1/64) within a segment.
     // =========================================================================
-    localparam int A_F              = 17;
-    localparam int A_W              = A_F;                               // 17
-    localparam int B_F              = 18;
-    localparam int B_W              = B_F;                               // 18
-    localparam int PACKED_W         = A_W + B_W;                         // 35
+    localparam int A_F              = 11;
+    localparam int A_W              = A_F;                               // 11
+    localparam int B_F              = 16;
+    localparam int B_W              = B_F;                               // 16
+    localparam int PACKED_W         = A_W + B_W;                         // 27
 
     // =========================================================================
     // Product and accumulator.
     //
-    // Both multiplier operands are < 1, so a*x is too: Q0.34, and 17 x 17 fits
+    // Both multiplier operands are < 1, so a*x is too: Q0.27, and 11 x 16 fits
     // a single DSP48E1 with no cascade and no partial-product split.
     //
-    // b - a*x lands in [0.5, 1) for every reachable input, so the accumulator
-    // is unsigned Q0.18 with no sign bit and no integer guard bits.
+    // b - a*x lands in [0.5, 1) for every reachable input (the table fit
+    // enforces it), so the accumulator is unsigned Q0.16 with no sign bit and
+    // no integer guard bits.
     // =========================================================================
-    localparam int PROD_F           = A_F + X_F;                         // 34
-    localparam int PROD_W           = PROD_F;                            // 34
-    localparam int CALC_F           = 18;
-    localparam int CALC_W           = CALC_F;                            // 18
+    localparam int PROD_F           = A_F + X_F;                         // 27
+    localparam int PROD_W           = PROD_F;                            // 27
+    localparam int CALC_F           = 16;
+    localparam int CALC_W           = CALC_F;                            // 16
     // Bits of a*x dropped when aligning to the accumulator.
-    localparam int CDROP            = PROD_F - CALC_F;                   // 16
+    localparam int CDROP            = PROD_F - CALC_F;                   // 11
 
     // =========================================================================
     // Normalisation.
     //
     // No priority encoder and no barrel shifter: b - a*x is known to be in
     // [0.5, 1), so the shift is either a constant 1 (STATIC_NORM) or one bit
-    // test and a 2:1 mux covering [0.25, 1). Both produce the same Q1.18
+    // test and a 2:1 mux covering [0.25, 1). Both produce the same Q1.16
     // result, so the guard costs no extra width.
     // =========================================================================
     localparam int POLY_OUT_I       = 1;
-    localparam int POLY_OUT_F       = CALC_F;                            // 18
-    localparam int POLY_OUT_W       = POLY_OUT_I + POLY_OUT_F;           // 19
+    localparam int POLY_OUT_F       = CALC_F;                            // 16
+    localparam int POLY_OUT_W       = POLY_OUT_I + POLY_OUT_F;           // 17
     localparam int STATIC_POLY_EXP  = -1;
 
     // =========================================================================
     // Final round to BF16
     // =========================================================================
-    localparam int BASE_SHIFT       = POLY_OUT_F - BF16_MANT_BITS;       // 11
+    localparam int BASE_SHIFT       = POLY_OUT_F - BF16_MANT_BITS;       // 9
     localparam int EXT_MANT_W       = BF16_MANT_BITS + 2;                // 9
 
 endpackage : bf16_exp2_optim_pkg

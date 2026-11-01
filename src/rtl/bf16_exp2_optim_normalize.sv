@@ -1,6 +1,6 @@
 // =============================================================================
 // bf16_exp2_optim_normalize.sv
-// Normalises the polynomial result to Q1.18.
+// Normalises the polynomial result to Q1.16.
 //
 // This module replaces bf16_normalize, which is a 62-bit priority encoder
 // followed by a 62-bit barrel shifter -- together the deepest logic in the
@@ -8,22 +8,22 @@
 // of b - a*x is known.
 //
 //   STATIC_NORM = 1   mantissa = res << 1,               exponent = -1
-//   STATIC_NORM = 0   mantissa = res << (res[17] ? 1:2), exponent = res[17] ? -1 : -2
+//   STATIC_NORM = 0   mantissa = res << (res[15] ? 1:2), exponent = res[15] ? -1 : -2
 //
 // -----------------------------------------------------------------------------
 // Which one to build
 //
-// b - a*x lands in [0.500657, 0.999992] for every input the front end can
-// actually produce, so the static form is correct as built. But that is an
-// input-space property, not an identity: over the full 2^17 domain of x the
-// last segment's fit undershoots by one accumulator LSB at x = 131071, and
-// the largest reachable x is 130823. Nothing hits it, and nothing is close,
-// but the claim has to be re-proved whenever the table, MANT_MULT_F, X_F or
-// the input exponent range changes.
+// The 64-entry coefficient table is fitted with b - a*x in [0.5, 1) as a hard
+// constraint on every reachable input, and tests/bf16_exp2_optim_test.cpp
+// measures [0.500188, 0.999985] over the whole 2^16 domain of x, reachable or
+// not. So with the current table the static form is unconditionally correct.
+// (The 128-entry predecessor undershot by one LSB at the single largest,
+// unreachable code of x.) The claim still has to be re-proved whenever the
+// table, MANT_MULT_F, X_F or the input exponent range changes.
 //
 // The guarded form is the default because it is cheap, not because it is free.
 // res in [0.5, 1) shifted left by 1 and res in [0.25, 0.5) shifted left by 2
-// both land in [2^18, 2^19), so the output is Q1.18 either way -- the guard
+// both land in [2^16, 2^17), so the output is Q1.16 either way -- the guard
 // does not buy an extra bit of WIDTH, only an extra bit test and a mux.
 // Measured on xc7a200t (make sweep_optim): 369 vs 350 LUT for the whole core,
 // so 19 LUT and 4 FF, with identical Fmax. That is ~5% of the core's logic to
@@ -50,8 +50,8 @@ module bf16_exp2_optim_normalize
     input  logic                    clk,
     input  logic                    rst_n,
     input  logic                    pipe_en,
-    input  logic [CALC_W-1:0]       res,              // Q0.18 unsigned
-    output logic [POLY_OUT_W-1:0]   normalized_mant,  // Q1.18, in [1.0, 2.0)
+    input  logic [CALC_W-1:0]       res,              // Q0.16 unsigned
+    output logic [POLY_OUT_W-1:0]   normalized_mant,  // Q1.16, in [1.0, 2.0)
     output logic signed [8:0]       poly_exponent
 );
 
